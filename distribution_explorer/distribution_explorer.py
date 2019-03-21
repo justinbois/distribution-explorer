@@ -175,7 +175,7 @@ import bokeh.layouts
 
 
 def _callback_code():
-    with open('/Users/bois/Dropbox/git/distribution_explorer/distribution_explorer/callback_code.js') as f:
+    with open('/Users/bois/Dropbox/git/distribution-explorer/distribution_explorer/callback_code.js') as f:
         return f.read()
 
 def _funs(dist):
