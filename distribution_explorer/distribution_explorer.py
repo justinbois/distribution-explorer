@@ -5,178 +5,52 @@ import bokeh.plotting
 import bokeh.models
 import bokeh.layouts
 
-
-
-# def _geometric_prob_code():
-#     return """
-#         function geometric_prob(x, theta) {
-#             if (theta == 1) {
-#               if (x == 0) {
-#                 return 1.0;
-#               }
-#               return 0.0;
-#             }
-
-#             if (x < 0 || theta == 0) {
-#                 return 0.0;
-#             }
-
-#             return Math.exp(x * Math.log(1-theta) + Math.log(theta))
-#         }
-#     """
-
-
-# def _negative_binomial_prob_code():
-#     return _lnfactorial_code() + _lngamma_code() + """
-#         function negative_binomial_prob(y, alpha, beta) {
-#             if (y  < 0) {
-#               return 0.0;
-#             }
-
-#             return Math.exp(lngamma(y + alpha)
-#                             - lngamma(alpha)
-#                             - lnfactorial(y)
-#                             + alpha * Math.log(beta / (1 + beta))
-#                             - y * Math.log(1 + beta));
-#         }
-#         """
-
-
-# def _binomial_prob_code():
-#     return _lnfactorial_code() + """
-#         function binomial_prob(n, N, theta) {
-#             if (n > N || n < 0) {
-#               return 0.0;
-#             }
-
-#             if (theta == 0) {
-#               if (n == 0) {
-#                 return 1.0;
-#               }
-#               return 0.0;
-#             }
-
-#             if (theta == 1) {
-#               if (n == N) {
-#                 return 1.0;
-#               }
-#               return 0.0;
-#             }
-
-#             return Math.exp(lnfactorial(N)
-#                             - lnfactorial(N - x_p[i])
-#                             - lnfactorial(x_p[i])
-#                             + x_p[i] * Math.log(theta)
-#                             + (N - x_p[i]) * Math.log(1-theta));
-#         }
-#         """
-
-
-# def _discrete_cdf_code():
-#     return """
-#         function discrete_cdf(sum, y_p, y_c) {
-#             y_c[0] = sum;
-#             y_c[1] = sum;
-#             for (var i = 0; i < y_p.length; i++) {
-#                 sum += y_p[i];
-#                 y_c[2*(i+1)] = sum;
-#                 y_c[2*(i+1)+1] = sum;
-#             }
-#             return y_c;
-#         }
-#         """
-
-# def _callback_code(dist):
-#     if dist == 'bernoulli':
-#         return """
-#             var data_p = source_p.data;
-#             var data_c = source_c.data;
-#             var theta = arg_1.value
-#             var y_p = data_p['y_p']
-#             var y_c = data_c['y_c']
-#             y_p[0] = 1 - theta
-#             y_p[1] = theta
-#             y_c[2] = 1 - theta
-#             y_c[3] = 1 - theta
-#             source_p.change.emit();
-#             source_c.change.emit();
-#         """
-#     elif dist == 'geometric':
-#         return _geometric_prob_code() + _discrete_cdf_code() + """
-#             var data_p = source_p.data;
-#             var data_c = source_c.data;
-#             var theta = arg_1.value
-#             var x_p = data_p['x']
-#             var x_c = data_c['x']
-#             var y_p = data_p['y_p']
-#             var y_c = data_c['y_c']
-#             for (var i = 0; i < x_p.length; i++) {
-#               y_p[i] = geometric_prob(x_p[i], theta);
-#             }
-
-#             var sum = 0.0
-#             for (var i = 0; i < x_p[0]; i++) {
-#                 sum += geometric_prob_prob(x_p[i], theta);
-#             }
-#             y_c = discrete_cdf(sum, y_p, y_c);
-
-#             source_p.change.emit();
-#             source_c.change.emit();
-#         """
-#     elif dist == 'binomial':
-#         return _binomial_prob_code() + _discrete_cdf_code() + """
-#             var data_p = source_p.data;
-#             var data_c = source_c.data;
-#             var N = arg_1.value;
-#             var theta = arg_2.value;
-#             var x_p = data_p['x']
-#             var x_c = data_c['x']
-#             var y_p = data_p['y_p']
-#             var y_c = data_c['y_c']
-#             for (var i = 0; i < x_p.length; i++) {
-#                   y_p[i] = binomial_prob(x_p[i], N, theta);
-#             }
-
-#             var sum = 0.0
-#             for (var i = 0; i < x_p[0]; i++) {
-#                 sum += binomial_prob(x_p[i], N, theta);
-#             }
-#             y_c = discrete_cdf(sum, y_p, y_c);
-
-#             source_p.change.emit();
-#             source_c.change.emit();
-#         """
-#     elif dist == 'negative_binomial':
-#         return _negative_binomial_prob_code() + _discrete_cdf_code() + """
-#             var data_p = source_p.data;
-#             var data_c = source_c.data;
-#             var alpha = arg_1.value;
-#             var beta = arg_2.value;
-#             var x_p = data_p['x']
-#             var x_c = data_c['x']
-#             var y_p = data_p['y_p']
-#             var y_c = data_c['y_c']
-
-#             for (var i = 0; i < x_p.length; i++) {
-#                   y_p[i] = negative_binomial_prob(x_p[i], alpha, beta);
-#             }
-
-#             var sum = 0.0
-#             for (var i = 0; i < x_p[0]; i++) {
-#                 sum += negative_binomial_prob(x_p[i], alpha, beta);
-#             }
-#             y_c = discrete_cdf(sum, y_p, y_c);
-
-#             source_p.change.emit();
-#             source_c.change.emit();
-#         """
-#     else:
-#         raise RuntimeError('Distribution not included.')
-
-
 def _callback_code():
     with open('/Users/bois/Dropbox/git/distribution-explorer/distribution_explorer/callback_code.js') as f:
         return f.read()
+
+
+def _callback_start():
+    return """
+slider.start = Math.max(min_value, Number(cb_obj.value));
+    """
+
+def _callback_end():
+    return """
+slider.end = Math.min(max_value, Number(cb_obj.value));
+    """
+
+def _callback_start_int():
+    return """
+slider.start = Math.max(1, Math.floor(Number(cb_obj.value)));
+    """
+
+def _callback_end_int():
+    return """
+slider.end = Math.floor(Number(cb_obj.value));
+    """
+
+def _categorical_pmf(x, theta_1, theta_2, theta_3):
+    thetas = np.array([theta_1, theta_2, theta_3, 1-theta_1-theta_2-theta_3])
+    if np.any(thetas < 0):
+        return 0.0
+    return thetas[x-1]
+
+def _categorical_cdf_indiv(x, thetas):
+    if x < 1:
+        return 0
+    elif x >= 4:
+        return 1
+    else:
+        return np.sum(thetas[:int(x)])
+
+def _categorical_cdf(x, theta_1, theta_2, theta_3):
+    thetas = np.array([theta_1, theta_2, theta_3, 1-theta_1-theta_2-theta_3])
+    if (thetas < 0).any():
+        return np.array([np.nan]*len(x))
+
+    return np.array([_categorical_cdf_indiv(x_val, thetas) for x_val in x])
+
 
 def _funs(dist):
     if dist == 'bernoulli':
@@ -186,11 +60,27 @@ def _funs(dist):
                 lambda x, theta: st.geom.cdf(x, theta, -1))
     elif dist == 'binomial':
         return st.binom.pmf, st.binom.cdf
-    elif dist == 'binomial':
-        return st.binom.pmf, st.binom.cdf
     elif dist == 'negative_binomial':
         return (lambda x, alpha, beta: st.nbinom.pmf(x, alpha, beta/(1+beta)),
                 lambda x, alpha, beta: st.nbinom.cdf(x, alpha, beta/(1+beta)))
+    elif dist == 'negative_binomial_mu_phi':
+        return (lambda x, mu, phi: st.nbinom.pmf(x, mu, phi/mu),
+                lambda x, mu, phi: st.nbinom.cdf(x, mu, phi/mu))
+    elif dist == 'poisson':
+        return st.poisson.pmf, st.poisson.cdf
+    elif dist == 'hypergeometric':
+        return (lambda x, N, a, b: st.hypergeom.pmf(x, a+b, a, N),
+                lambda x, N, a, b: st.hypergeom.cdf(x, a+b, a, N))
+    elif dist == 'categorical':
+        return _categorical_pmf, _categorical_cdf
+    elif dist == 'discrete_uniform':
+        return (lambda x, low, high: st.randint.pmf(x, low, high+1),
+                lambda x, low, high: st.randint.cdf(x, low, high+1))
+    elif dist == 'uniform':
+        return (lambda x, alpha, beta: st.uniform.pdf(x, alpha, beta-alpha),
+                lambda x, alpha, beta: st.uniform.cdf(x, alpha, beta-alpha))
+    elif dist == 'normal':
+        return st.norm.pdf, st.norm.cdf
     else:
         raise RuntimeError('Distribution not included.')
 
@@ -201,30 +91,267 @@ def _discrete_dists():
             'negative_binomial',
             'negative_binomial_mu_phi',
             'binomial',
+            'beta_binomial',
             'poisson',
+            'hypergeometric',
             'categorical',
             'discrete_uniform']
 
+def _continuous_dists():
+    return ['uniform',
+            'normal',
+            'gamma',
+            'inv_gamma',
+             'beta']
 
-def explore(dist=None, x_min=None, x_max=None,
-    x_axis_type='linear', y_axis_type='linear',
-    params=None, n=400, plot_height=200, plot_width=300, x_axis_label='x',
-    title=None):
+
+def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
+    if dist == 'bernoulli':
+        params = [dict(name='θ',
+                       start=0,
+                       end=1,
+                       value=0.5,
+                       step=0.01,
+                       is_int=False,
+                       min_value=0,
+                       max_value=1)]
+        x_min = 0
+        x_max = 1
+        x_axis_label = 'y'
+        title = 'Bernoulli'
+    elif dist == 'geometric':
+        params = [dict(name='θ',
+                       start=0,
+                       end=1,
+                       value=0.5,
+                       step=0.01,
+                       is_int=False,
+                       min_value=0,
+                       max_value=1)]
+        x_min = 0
+        x_max = 20
+        x_axis_label = 'y'
+        title = 'Geometric'
+    elif dist == 'negative_binomial':
+        params = [dict(name='α',
+                       start=0,
+                       end=20,
+                       value=5,
+                       step=0.01,
+                       is_int=False,
+                       min_value=0,
+                       max_value='Infinity'),
+                  dict(dict(name='α',
+                       start=0,
+                       end=20,
+                       value=5,
+                       step=0.01,
+                       is_int=False,
+                       min_value=0,
+                       max_value='Infinity'))]
+        x_min = 0
+        x_max = 50
+        x_axis_label = 'y'
+        title = 'Negative Binomial'
+    elif dist == 'negative_binomial_mu_phi':
+        params = [dict(name='µ',
+                       start=0,
+                       end=20,
+                       value=5,
+                       step=0.01,
+                       is_int=False,
+                       min_value=0,
+                       max_value='Infinity'),
+                  dict(dict(name='φ',
+                       start=0,
+                       end=5,
+                       value=1,
+                       step=0.01,
+                       is_int=False,
+                       min_value=0,
+                       max_value='Infinity'))]
+        x_min = 0
+        x_max = 50
+        x_axis_label = 'y'
+        title = 'Negative Binomial'
+    elif dist == 'binomial':
+        params = [dict(name='N',
+                       start=1,
+                       end=20,
+                       value=5,
+                       step=1,
+                       is_int=True,
+                       min_value=1,
+                       max_value='Infinity'),
+                  dict(name='θ',
+                       start=0,
+                       end=1,
+                       value=0.5,
+                       step=0.01,
+                       is_int=False,
+                       min_value=0,
+                       max_value=1)]
+        x_min = 0
+        x_max = 20
+        x_axis_label = 'n'
+        title = 'Binomial'
+    elif dist == 'poisson':
+        params = [dict(name='λ',
+                       start=0,
+                       end=20,
+                       value=5,
+                       step=0.01,
+                       is_int=False,
+                       min_value=0,
+                       max_value='Infinity')]
+        x_min = 0
+        x_max = 40
+        x_axis_label = 'n'
+        title = 'Poisson'
+    elif dist == 'hypergeometric':
+        params = [dict(name='N',
+                       start=1,
+                       end=20,
+                       value=5,
+                       step=1,
+                       is_int=True,
+                       min_value=0,
+                       max_value='Infinity'),
+                  dict(name='a',
+                       start=1,
+                       end=20,
+                       value=10,
+                       step=1,
+                       is_int=True,
+                       min_value=0,
+                       max_value='Infinity'),
+                  dict(name='b',
+                       start=1,
+                       end=20,
+                       value=10,
+                       step=1,
+                       is_int=True,
+                       min_value=0,
+                       max_value='Infinity')]
+        x_min = 0
+        x_max = 20
+        x_axis_label = 'n'
+        title = 'Hypergeometric'
+    elif dist == 'categorical':
+        params = [dict(name='θ₁',
+                       start=0,
+                       end=1,
+                       value=0.2,
+                       step=0.01,
+                       is_int=False,
+                       min_value=0,
+                       max_value=1),
+                  dict(name='θ₂',
+                       start=0,
+                       end=1,
+                       value=0.3,
+                       step=0.01,
+                       is_int=False,
+                       min_value=0,
+                       max_value=1),
+                  dict(name='θ₃',
+                       start=0,
+                       end=1,
+                       value=0.1,
+                       step=0.01,
+                       is_int=False,
+                       min_value=0,
+                       max_value=1)]
+        x_min = 1
+        x_max = 4
+        x_axis_label = 'category'
+        title = 'Categorical'
+    elif dist == 'discrete_uniform':
+        params = [dict(name='low',
+                       start=0,
+                       end=10,
+                       value=0,
+                       step=1,
+                       is_int=True,
+                       min_value='-Infinity',
+                       max_value='Infinity'),
+                  dict(name='high',
+                       start=0,
+                       end=10,
+                       value=10,
+                       step=1,
+                       is_int=True,
+                       min_value='-Infinity',
+                       max_value='Infinity')]
+        x_min = 0
+        x_max = 10
+        x_axis_label = 'n'
+        title = 'Discrete Uniform'
+    elif dist == 'uniform':
+        params = [dict(name='α',
+                       start=0,
+                       end=10,
+                       value=0,
+                       step=0.01,
+                       is_int=False,
+                       min_value='-Infinity',
+                       max_value='Infinity'),
+                  dict(name='β',
+                       start=0,
+                       end=10,
+                       value=10,
+                       step=0.01,
+                       is_int=False,
+                       min_value='-Infinity',
+                       max_value='Infinity')]
+        x_min = -1
+        x_max = 11
+        x_axis_label = 'y'
+        title = 'Uniform'
+    elif dist == 'normal' or dist == 'gaussian':
+        params = [dict(name='µ',
+                       start=-0.5,
+                       end=0.5,
+                       value=0,
+                       step=0.01,
+                       is_int=False,
+                       min_value='-Infinity',
+                       max_value='Infinity'),
+                  dict(name='σ',
+                       start=0,
+                       end=1,
+                       value=0.2,
+                       step=0.01,
+                       is_int=False,
+                       min_value='0',
+                       max_value='Infinity')]
+        x_min = -2
+        x_max = 2
+        x_axis_label = 'y'
+        title = 'Normal'
+    params = params if _params is None else _params
+    x_min = x_min if _x_min is None else _x_min
+    x_max = x_max if _x_max is None else _x_max
+    x_axis_label = x_axis_label if _x_axis_label is None else _x_axis_label
+    title = title if _title is None else _title
+
+    return params, x_min, x_max, x_axis_label, title
+
+
+def explore(dist=None, params=None, x_min=None, x_max=None,
+            x_axis_type='linear', y_axis_type='linear', n=400,
+            plot_height=200, plot_width=300, x_axis_label=None,
+            title=None, slider_range_textbox=False):
     """
     Build interactive Bokeh app displaying a univariate
     probability distribution.
 
     Parameters
     ----------
-    x_min : float
+    x_min : float, default dependent on dist
         Minimum value that the random variable can take in plots.
-    x_max : float
+    x_max : float, default dependent on dist
         Maximum value that the random variable can take in plots.
-    adjustable_xrange: bool, default False
-        If True, allow for adjusting the range for which the PMF/PDF and
-        CDF are calculated. You can always zoom in and out, but if you
-        zoom far out, the values of the PMF/PDF and CDF are not
-        calculated unless you specify.
     x_axis_type : Either 'linear' or 'log', default 'linear'
         Whether x-axis is linear or log scale. Applies to both PMF/PDF
         and CDF.
@@ -253,10 +380,18 @@ def explore(dist=None, x_min=None, x_max=None,
         Height of plots.
     plot_width : int, default 300
         Width of plots.
-    x_axis_label : str, default 'x'
+    x_axis_label : str, default dependent on dist
         Label for x-axis.
     title : str, default None
         Title to be displayed above the PDF or PMF plot.
+    slider_range_textbox: bool, default False
+        If Bokeh is version number is 1.1.0 or above, text boxes used
+        for setting the ranges on parameter values are provided. In
+        earlier versions of Bokeh, a bug prevented proper layouts of the
+        widgets (see https://github.com/bokeh/bokeh/issues/6427). If
+        `slider_range_textbox` is True and the Bokeh version is less
+        than 1.1.0, the poorly laid out text boxes are nonetheless
+        shown.
 
     Returns
     -------
@@ -265,22 +400,33 @@ def explore(dist=None, x_min=None, x_max=None,
         with bokeh.io.show(). If it is displayed in a notebook, the
         notebook_url kwarg should be specified.
     """
-    if None in [x_min, x_max]:
-        raise RuntimeError('`x_min` and `x_max` must be specified.')
-
     dist = dist.lower()
     if dist in _discrete_dists():
         discrete = True
-    else:
+    elif dist in _continuous_dists():
         discrete = False
+    else:
+        dists = ', '.join(_discrete_dists() + _continuous_dists())
+        raise RuntimeError(f"distribution '{dist}' not supported. Allowed distributions are {dists}.")
+
+    if dist == 'gaussian':
+        dist = 'normal'
+
+    # Load parameters
+    params, x_min, x_max, x_axis_label, title = _load_params(
+            dist, params, x_min, x_max, x_axis_label, title)
+
+    for i, param in enumerate(params):
+        if 'is_int' not in param:
+            params[i]['is_int'] = False
+        if params[i]['is_int']:
+            params[i]['step'] = 1
+            params[i]['start'] = 1
 
     if discrete:
         p_y_axis_label = 'PMF'
     else:
         p_y_axis_label = 'PDF'
-
-    if params is None:
-        raise RuntimeError('`params` must be specified.')
 
 
     p_p = bokeh.plotting.figure(plot_height=plot_height,
@@ -357,16 +503,18 @@ def explore(dist=None, x_min=None, x_max=None,
 
     callback = bokeh.models.CustomJS(
         args=dict(source_p=source_p, source_c=source_c, dist=dist,
-                  discrete=discrete, xrange=p_p.x_range),
+                  discrete=discrete, xrange=p_p.x_range, n=n),
         code=_callback_code())
 
-
+    # Sliders
     sliders = [bokeh.models.Slider(start=param['start'],
                                    end=param['end'],
                                    value=param['value'],
                                    step=param['step'],
                                    title=param['name'])
                         for param in params]
+
+    # Assign callbacks to sliders
     for i, slider in enumerate(sliders):
         callback.args['arg'+str(i+1)] = slider
         slider.js_on_change('value', callback)
@@ -374,12 +522,42 @@ def explore(dist=None, x_min=None, x_max=None,
         for i in range(len(sliders), 3):
             callback.args['arg'+str(i+1)] = sliders[0]
 
+    # Execute callback upon changing x-axis values
     if dist not in ['bernoulli', 'categorical']:
         p_p.x_range.callback = callback
 
+    # Text boxes for setting slider ranges (Bokeh 1.1.0 and above)
+    if bokeh.__version__ > '1.1.0' or slider_range_textbox:
+        starts = [bokeh.models.TextInput(value=str(param['start']), width=20)
+                    for param in params]
+        ends = [bokeh.models.TextInput(value=str(param['end']), width=20)
+                    for param in params]
+
+        # Callbacks for setting slider ranges
+        for param, slider, start, end in zip(params, sliders, starts, ends):
+            args = dict(min_value=param['min_value'],
+                        max_value=param['max_value'],
+                        slider=slider)
+            if param['is_int']:
+                cb_start = bokeh.models.CustomJS(args=args,
+                                                 code=_callback_start_int())
+                cb_end = bokeh.models.CustomJS(args=args,
+                                               code=_callback_end_int())
+            else:
+                cb_start = bokeh.models.CustomJS(args=args,
+                                                 code=_callback_start())
+                cb_end = bokeh.models.CustomJS(args=args, code=_callback_end())
+
+            start.js_on_change('value', cb_start)
+            end.js_on_change('value', cb_end)
+
+        widgets = bokeh.layouts.layout([[start, slider, end]
+                    for start, slider, end in zip(starts, sliders, ends)])
+    else:
+        widgets = bokeh.layouts.widgetbox(sliders)
+
     # Layout plots next to each other
     grid = bokeh.layouts.gridplot([p_p, p_c], ncols=2)
-    widgets = bokeh.layouts.widgetbox(sliders)
 
     # Put the layout together and return
     return bokeh.layouts.column(widgets, grid)
