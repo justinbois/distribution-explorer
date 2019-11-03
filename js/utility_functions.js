@@ -1,3 +1,48 @@
+function discrete_cdf(cumsum, y_p) {
+    var y_c = [];
+
+    y_c.push(cumsum, cumsum);
+    for (var i = 0; i < y_p.length; i++) {
+        cumsum += y_p[i];
+        y_c.push(cumsum, cumsum);
+    }
+
+    return y_c;
+}
+
+
+function update_y_p(probFun, x_p, arg1, arg2, arg3) {
+    // Compute PMF/PDF
+    var y_p = [];
+    for (var i = 0; i < x_p.length; i++) {
+      y_p.push(probFun(x_p[i], arg1, arg2, arg3));
+    }
+
+    return y_p;
+}
+
+
+function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
+    // Compute CDF
+    var cumsum = 0.0;
+    for (var i = 0; i < x_p[0]; i++) {
+        cumsum += probFun(x_p[i], arg1, arg2, arg3);
+    }
+
+    y_c = discrete_cdf(cumsum, y_p);
+    return y_c;
+}
+
+
+function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
+    var y_c = [];
+    for (var i = 1; i < x_c.length; i ++)
+        y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
+
+    return y_c;
+}
+
+
 function linspace(start, stop, n) {
 	var x = [];
 	var currValue = start;
@@ -17,179 +62,6 @@ function arange(start, stop) {
 }
 
 
-function bernoulli_prob(x, theta, {}, {}) {
-	if (x == 0) return 1 - theta;
-	else if (x == 1) return theta;
-	else return 0.0;
-}
-
-
-function geometric_prob(x, theta, {}, {}) {
-	if (theta == 1) {
-		if (x == 0) return 1.0;
-		return 0.0;
-	}
-
-	if (x < 0 || theta == 0) return 0.0;
-
-	return Math.exp(x * Math.log(1-theta) + Math.log(theta))
-}
-
-
-function negative_binomial_prob(y, alpha, beta, {}) {
-    if (y  < 0) return 0.0;
-
-    return Math.exp(lngamma(y + alpha)
-                    - lngamma(alpha)
-                    - lnfactorial(y)
-                    + alpha * Math.log(beta / (1 + beta))
-                    - y * Math.log(1 + beta));
-}
-
-
-function negative_binomial_mu_phi_prob(y, mu, phi, {}) {
-   	return negative_binomial_prob(y, phi, phi/mu, {});
-}
-
-
-function binomial_prob(n, N, theta, {}) {
-    if (n > N || n < 0) return 0.0;
-
-    if (theta == 0) {
-    	if (n == 0) return 1.0;
-    	return 0.0;
-    }
-
-    if (theta == 1) {
-        if (n == N) return 1.0;
-        return 0.0;
-    }
-
-    return Math.exp(lnchoice(N, n)
-                    + n * Math.log(theta)
-                    + (N - n) * Math.log(1-theta));
-}
-
-
-function beta_binomial_prob(n, N, alpha, beta) {
-    if (n > N || n < 0) return 0.0;
-
-    return Math.exp(lnchoice(N, n)
-                    + lnbeta(n+alpha, N-n+beta)
-                    - lnbeta(alpha, beta));
-}
-
-
-function poisson_prob(n, lam, {}, {}) {
-    if (n < 0) return 0.0;
-
-    if (lam == 0) {
-        if (n == 0) return 1.0;
-        return 0.0;
-    }
-
-    return Math.exp(n * Math.log(lam)
-                    - lnfactorial(n)
-                    - lam);
-}
-
-
-function hypergeometric_prob(n, N, a, b) {
-    if (n < Math.max(0, N-b) || n > Math.min(N, a)) return 0.0;
-
-    return Math.exp(lnchoice(a, n) + lnchoice(b, N-n) - lnchoice(a+b, N));
-}
-
-
-function categorical_prob(cat, theta1, theta2, theta3) {
-    var theta4 = 1 - theta1 - theta2 - theta3
-    if (theta4 < 0) return 0.0;
-    if (![1, 2, 3, 4].includes(cat)) return 0.0;
-
-    var probs = [theta1, theta2, theta3, theta4]
-
-    return probs[cat-1];
-}
-
-
-function discrete_uniform_prob(n, low, high, {}) {
-    if (low > high || n < low || n > high) return 0.0
-
-    return 1 / (high - low + 1)
-}
-
-
-function uniform_prob(x, alpha, beta, {}) {
-    if (beta <= alpha || x < alpha || x > beta) return 0.0;
-
-    return 1 / (beta - alpha);
-}
-
-
-function uniform_cdf(x, alpha, beta, {}) {
-    if (beta <= alpha || x <= alpha) return 0.0;
-    if (x >= beta) return 1.0;
-    return (x - alpha) / (beta - alpha);
-}
-
-
-
-function normal_prob(x, mu, sigma, {}) {
-    var expTerm = (Math.pow(x-mu, 2) / 2.0 / Math.pow(sigma, 2))
-    return Math.exp(-expTerm) / sigma / Math.sqrt(2 * Math.PI);
-}
-
-
-function normal_cdf(x, mu, sigma, {}) {
-    return (1 + erf((x-mu) / sigma / Math.sqrt(2))) / 2;
-}
-
-
-function discrete_cdf(cumsum, y_p) {
-	var y_c = [];
-
-	y_c.push(cumsum, cumsum);
-    for (var i = 0; i < y_p.length; i++) {
-        cumsum += y_p[i];
-		y_c.push(cumsum, cumsum);
-    }
-
-    return y_c;
-}
-
-
-function update_y_p(probFun, x_p, arg1, arg2, arg3) {
-	// Compute PMF
-	var y_p = [];
-    for (var i = 0; i < x_p.length; i++) {
-      y_p.push(probFun(x_p[i], arg1, arg2, arg3));
-    }
-
-    return y_p;
-}
-
-
-function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
-    // Compute CDF
-    var cumsum = 0.0
-    for (var i = 0; i < x_p[0]; i++) {
-        cumsum += probFun(x_p[i], arg1, arg2, arg3);
-    }
-
-    y_c = discrete_cdf(cumsum, y_p);
-    return y_c;
-}
-
-
-function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
-    var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
-        y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
-
-    return y_c;
-}
-
-
 function erf(x) {
     // Error function using polynomial approximation (accurate to about 10^-7)
     var a = [1.00002368,
@@ -200,7 +72,7 @@ function erf(x) {
              -1.13520398,
              1.48851587,
              -0.82215223,
-             0.17087277]
+             0.17087277];
 
     var t = 1 / (1 + Math.abs(x)/2);
     var expSum = -Math.pow(x, 2) - 1.26551223;
@@ -223,6 +95,34 @@ function lnchoice(n, k) {
 
 function lnbeta(x, y) {
     return lngamma(x) + lngamma(y) - lngamma(x + y);
+}
+
+
+function lngamma(z) {
+    // Compute log of the Gamma function using Lanczos approx.,
+    // see https://en.wikipedia.org/wiki/Lanczos_approximation.
+
+    if(z < 0) return Number('0/0');
+
+    if (z < 0.5) return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - lngamma(1-z);
+
+    var p = [676.5203681218851,
+             -1259.1392167224028,
+             771.32342877765313,
+             -176.61502916214059,
+             12.507343278686905,
+             -0.13857109526572012,
+             9.9843695780195716e-6,
+             1.5056327351493116e-7];
+
+    z -= 1.0;
+    var Ag = 0.99999999999980993;
+    for (var i = 0; i < p.length; i++) {
+        Ag += p[i] / (z + i + 1);
+    }
+    var t = z + p.length - 0.5;
+
+    return 0.5 * Math.log(2*Math.PI) + (z + 0.5)*Math.log(t) - t + Math.log(Ag);
 }
 
 
@@ -486,117 +386,7 @@ function lnfactorial(n) {
                     1139.570684729984800,
                     1145.100113817496100,
                     1150.633503306223700,
-                    1156.170837573242400]
+                    1156.170837573242400];
     return lnfact[n];
   }
 }
-
-
-function lngamma(z) {
-	// Compute log of the Gamma function using Lanczos approx.,
-	// see https://en.wikipedia.org/wiki/Lanczos_approximation.
-
-	if(z < 0) return Number('0/0');
-
-	if (z < 0.5) return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - lngamma(1-z);
-
-    var p = [676.5203681218851,
-	         -1259.1392167224028,
-	         771.32342877765313,
-	         -176.61502916214059,
-	         12.507343278686905,
-	         -0.13857109526572012,
-	         9.9843695780195716e-6,
-	         1.5056327351493116e-7];
-
-	z -= 1.0;
-	var Ag = 0.99999999999980993;
-	for (var i = 0; i < p.length; i++) {
-		Ag += p[i] / (z + i + 1);
-	}
-	var t = z + p.length - 0.5;
-
-	return 0.5 * Math.log(2*Math.PI) + (z + 0.5)*Math.log(t) - t + Math.log(Ag);
-}
-
-
-// Extract data from sources
-var data_p = source_p.data;
-var data_c = source_c.data;
-var x_p = data_p['x'];
-var y_p = data_p['y_p'];
-var x_c = data_c['x'];
-var y_c = data_c['y_c'];
-var xRangeMin = xrange.start;
-var xRangeMax = xrange.end;
-
-// Make corrections for start and end points for discrete distributions
-if (dist == 'bernoulli' || dist == 'beta') {
-	xRangeMin = 0.0;
-	xRangeMax = 1.0;
-}
-else if (dist == 'categorical') {
-	xRangeMin = 1;
-	xRangeMax = x_p.length;
-}
-else if (discrete) {
-  	xRangeMin = Math.max(0, Math.floor(xRangeMin));
-	xRangeMax = Math.floor(xRangeMax);
-}
-
-// x-values to evaluate PMF/PDF and CDF
-if (discrete) {
-	x_p = arange(xRangeMin, xRangeMax+1);
-	xSize = xRangeMax - xRangeMin;
-
-	x_c = [];
-	for (var i = 0; i < x_p.length; i++) x_c.push(x_p[i], x_p[i]);
-
-	x_c.unshift(Math.max(xRangeMin - 0.05 * xSize, xRangeMin - 0.95));
-	x_c.push(Math.min(xRangeMax + 0.05 * xSize, xRangeMax + 0.95));
-}
-else {
-	x_p = linspace(xRangeMin, xRangeMax, n);
-	x_c = x_p
-}
-
-// Update sources with new x-values
-source_p.data['x'] = x_p
-source_c.data['x'] = x_c
-
-// Which function to compute probability or probability density
-var probFun
-var cdfFun
-if (dist === 'bernoulli') probFun = bernoulli_prob;
-else if (dist === 'geometric') probFun = geometric_prob;
-else if (dist === 'negative_binomial') probFun = negative_binomial_prob;
-else if (dist === 'negative_binomial_mu_phi') probFun = negative_binomial_mu_phi_prob;
-else if (dist === 'binomial') probFun = binomial_prob;
-else if (dist === 'beta_binomial') probFun = beta_binomial_prob;
-else if (dist === 'poisson') probFun = poisson_prob;
-else if (dist === 'hypergeometric') probFun = hypergeometric_prob;
-else if (dist === 'categorical') probFun = categorical_prob;
-else if (dist === 'discrete_uniform') probFun = discrete_uniform_prob;
-else if (dist == 'uniform') {
-    probFun = uniform_prob;
-    cdfFun = uniform_cdf;
-}
-else if (dist == 'normal') {
-    probFun = normal_prob;
-    cdfFun = normal_cdf;
-}
-
-// Update the PMF/PDF and CDF
-source_p.data['y_p'] = update_y_p(probFun, 
-        x_p, arg1.value, arg2.value, arg3.value);
-if (discrete) {
-	source_c.data['y_c'] = update_y_c_discrete(probFun, 
-		x_c, source_p.data['y_p'], arg1.value, arg2.value, arg3.value);
-}
-else {
-    source_c.data['y_c'] = update_y_c_continuous(cdfFun, 
-        x_c, arg1.value, arg2.value, arg3.value);
-}
-
-source_p.change.emit();
-source_c.change.emit();
