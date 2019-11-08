@@ -10,21 +10,31 @@ import bokeh.layouts
 from . import callbacks
 
 discrete_dists = [
-    'bernoulli',
-    'binomial',
-    'categorical',
-    'discrete_uniform',
-    'geometric',
-    'hypergeometric',
-    'negative_binomial',
-    'negative_binomial_mu_phi',
-    'poisson',
+    "bernoulli",
+    "binomial",
+    "categorical",
+    "discrete_uniform",
+    "geometric",
+    "hypergeometric",
+    "negative_binomial",
+    "negative_binomial_mu_phi",
+    "poisson",
 ]
 
 continuous_dists = [
-    'normal',
-    'uniform',
+    "beta",
+    "cauchy",
+    "exponential",
+    "gamma",
+    "inverse_gamma",
+    "lognormal",
+    "normal",
+    "pareto",
+    "student_t",
+    "uniform",
+    "weibull",
 ]
+
 
 def _callback_code():
     with open(
@@ -60,13 +70,25 @@ def _categorical_cdf(x, theta_1, theta_2, theta_3):
 def _funs(dist):
     if dist == "bernoulli":
         return st.bernoulli.pmf, st.bernoulli.cdf
+    elif dist == "binomial":
+        return st.binom.pmf, st.binom.cdf
+    elif dist == "categorical":
+        return _categorical_pmf, _categorical_cdf
+    elif dist == "discrete_uniform":
+        return (
+            lambda x, low, high: st.randint.pmf(x, low, high + 1),
+            lambda x, low, high: st.randint.cdf(x, low, high + 1),
+        )
     elif dist == "geometric":
         return (
             lambda x, theta: st.geom.pmf(x, theta, -1),
             lambda x, theta: st.geom.cdf(x, theta, -1),
         )
-    elif dist == "binomial":
-        return st.binom.pmf, st.binom.cdf
+    elif dist == "hypergeometric":
+        return (
+            lambda x, N, a, b: st.hypergeom.pmf(x, a + b, a, N),
+            lambda x, N, a, b: st.hypergeom.cdf(x, a + b, a, N),
+        )
     elif dist == "negative_binomial":
         return (
             lambda x, alpha, beta: st.nbinom.pmf(x, alpha, beta / (1 + beta)),
@@ -79,25 +101,49 @@ def _funs(dist):
         )
     elif dist == "poisson":
         return st.poisson.pmf, st.poisson.cdf
-    elif dist == "hypergeometric":
+    elif dist == "beta":
+        return st.beta.pdf, st.beta.cdf
+    elif dist == "cauchy":
+        return st.cauchy.pdf, st.cauchy.cdf
+    elif dist == "exponential":
         return (
-            lambda x, N, a, b: st.hypergeom.pmf(x, a + b, a, N),
-            lambda x, N, a, b: st.hypergeom.cdf(x, a + b, a, N),
+            lambda x, beta: st.expon.pdf(x, loc=0, scale=1 / beta),
+            lambda x, beta: st.expon.cdf(x, loc=0, scale=1 / beta),
         )
-    elif dist == "categorical":
-        return _categorical_pmf, _categorical_cdf
-    elif dist == "discrete_uniform":
+    elif dist == "gamma":
         return (
-            lambda x, low, high: st.randint.pmf(x, low, high + 1),
-            lambda x, low, high: st.randint.cdf(x, low, high + 1),
+            lambda x, alpha, beta: st.gamma.pdf(x, alpha, loc=0, scale=1 / beta),
+            lambda x, alpha, beta: st.gamma.cdf(x, alpha, loc=0, scale=1 / beta),
         )
+    elif dist == "inverse_gamma":
+        return (
+            lambda x, alpha, beta: st.invgamma.pdf(x, alpha, loc=0, scale=beta),
+            lambda x, alpha, beta: st.invgamma.cdf(x, alpha, loc=0, scale=beta),
+        )
+    elif dist == "lognormal":
+        return (
+            lambda x, mu, sigma: st.lognorm.pdf(x, sigma, loc=0, scale=np.exp(mu)),
+            lambda x, mu, sigma: st.lognorm.pdf(x, sigma, loc=0, scale=np.exp(mu)),
+        )
+    elif dist == "normal":
+        return st.norm.pdf, st.norm.cdf
+    elif dist == "pareto":
+        return (
+            lambda x, y_min, alpha: st.pareto.pdf(x, alpha, scale=y_min),
+            lambda x, y_min, alpha: st.pareto.cdf(x, alpha, scale=y_min)
+        )
+    elif dist == "student_t":
+        return st.t.pdf, st.t.cdf
     elif dist == "uniform":
         return (
             lambda x, alpha, beta: st.uniform.pdf(x, alpha, beta - alpha),
             lambda x, alpha, beta: st.uniform.cdf(x, alpha, beta - alpha),
         )
-    elif dist == "normal":
-        return st.norm.pdf, st.norm.cdf
+    elif dist == "weibull":
+        return (
+            lambda x, alpha, sigma: st.weibull_min.pdf(x, alpha, loc=0, scale=sigma),
+            lambda x, alpha, sigma: st.weibull_min.cdf(x, alpha, loc=0, scale=sigma),
+        )
     else:
         raise RuntimeError("Distribution not included.")
 
@@ -278,16 +324,14 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
                 max_value="Infinity",
             ),
             dict(
-                dict(
-                    name="α",
-                    start=0,
-                    end=20,
-                    value=5,
-                    step=0.01,
-                    is_int=False,
-                    min_value=0,
-                    max_value="Infinity",
-                )
+                name="β",
+                start=0,
+                end=20,
+                value=5,
+                step=0.01,
+                is_int=False,
+                min_value=0,
+                max_value="Infinity",
             ),
         ]
         x_min = 0
@@ -307,16 +351,14 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
                 max_value="Infinity",
             ),
             dict(
-                dict(
-                    name="φ",
-                    start=0,
-                    end=5,
-                    value=1,
-                    step=0.01,
-                    is_int=False,
-                    min_value=0,
-                    max_value="Infinity",
-                )
+                name="φ",
+                start=0,
+                end=5,
+                value=1,
+                step=0.01,
+                is_int=False,
+                min_value=0,
+                max_value="Infinity",
             ),
         ]
         x_min = 0
@@ -340,6 +382,158 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         x_max = 40
         x_axis_label = "n"
         title = "Poisson"
+    elif dist == "beta":
+        params = [
+            dict(
+                name="α",
+                start=0.01,
+                end=10,
+                value=1,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+            dict(
+                name="β",
+                start=0.01,
+                end=10,
+                value=1,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+        ]
+        x_min = 0
+        x_max = 30
+        x_axis_label = "θ"
+        title = "Beta"
+    elif dist == "cauchy":
+        params = [
+            dict(
+                name="µ",
+                start=-0.5,
+                end=0.5,
+                value=0,
+                step=0.01,
+                is_int=False,
+                min_value="-Infinity",
+                max_value="Infinity",
+            ),
+            dict(
+                name="σ",
+                start=0.1,
+                end=1.0,
+                value=0.2,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+        ]
+        x_min = -2
+        x_max = 2
+        x_axis_label = "y"
+        title = "Cauchy"
+    elif dist == "exponential":
+        params = [
+            dict(
+                name="β",
+                start=0.1,
+                end=1,
+                value=0.25,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            )
+        ]
+        x_min = 0
+        x_max = 30
+        x_axis_label = "y"
+        title = "Exponential"
+    elif dist == "gamma":
+        params = [
+            dict(
+                name="α",
+                start=1,
+                end=5,
+                value=2,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+            dict(
+                name="β",
+                start=0.1,
+                end=5,
+                value=2,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+        ]
+        x_min = 0
+        x_max = 10
+        x_axis_label = "y"
+        title = "Gamma"
+    elif dist == "inverse_gamma":
+        params = [
+            dict(
+                name="α",
+                start=0.01,
+                end=2,
+                value=0.5,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+            dict(
+                name="β",
+                start=0.1,
+                end=2,
+                value=1,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+        ]
+        x_min = 0
+        x_max = 20
+        x_axis_label = "y"
+        title = "Inverse Gamma"
+    elif dist == "lognormal":
+        params = [
+            dict(
+                name="µ",
+                start=-0.5,
+                end=0.5,
+                value=0.0,
+                step=0.01,
+                is_int=False,
+                min_value="-Infinity",
+                max_value="Infinity",
+            ),
+            dict(
+                name="σ",
+                start=0.1,
+                end=1.0,
+                value=0.2,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+        ]
+        x_min = 0
+        x_max = 4
+        x_axis_label = "y"
+        title = "Log-Normal"
     elif dist == "normal" or dist == "gaussian":
         params = [
             dict(
@@ -367,6 +561,70 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         x_max = 2
         x_axis_label = "y"
         title = "Normal"
+    elif dist == "pareto":
+        params = [
+            dict(
+                name="ymin",
+                start=0.1,
+                end=1.0,
+                value=0.1,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+            dict(
+                name="α",
+                start=0.01,
+                end=4,
+                value=2,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+        ]
+        x_min = 0
+        x_max = 10
+        x_axis_label = "y"
+        title = "Pareto"
+    elif dist == "student_t":
+        params = [
+            dict(
+                name="ν",
+                start=1,
+                end=10,
+                value=2,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+            dict(
+                name="μ",
+                start=-0.5,
+                end=0.5,
+                value=0,
+                step=0.01,
+                is_int=False,
+                min_value="-Infinity",
+                max_value="Infinity",
+            ),
+            dict(
+                name="σ",
+                start=0.1,
+                end=1.0,
+                value=0.2,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+        ]
+        x_min = -2
+        x_max = 2
+        x_axis_label = "y"
+        title = "Student-t"
     elif dist == "uniform":
         params = [
             dict(
@@ -394,6 +652,33 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         x_max = 11
         x_axis_label = "y"
         title = "Uniform"
+    elif dist == "weibull":
+        params = [
+            dict(
+                name="α",
+                start=0.1,
+                end=5,
+                value=1,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+            dict(
+                name="σ",
+                start=0.1,
+                end=3,
+                value=1.5,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+        ]
+        x_min = 0
+        x_max = 8
+        x_axis_label = "y"
+        title = "Weibull"
     params = params if _params is None else _params
     x_min = x_min if _x_min is None else _x_min
     x_max = x_max if _x_max is None else _x_max
@@ -661,7 +946,9 @@ def explore(
 
     # Layout plots next to each other
     grid = bokeh.layouts.gridplot(
-        [p_p, bokeh.layouts.Spacer(width=30), p_c], ncols=3, toolbar_location=toolbar_location
+        [p_p, bokeh.layouts.Spacer(width=30), p_c],
+        ncols=3,
+        toolbar_location=toolbar_location,
     )
 
     # Put the layout together and return
