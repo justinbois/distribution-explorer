@@ -1,18 +1,27 @@
 discrete_dists = [
-    'bernoulli',
-    'binomial',
-    'categorical',
-    'discrete_uniform',
-    'geometric',
-    'hypergeometric',
-    'negative_binomial',
-    'negative_binomial_mu_phi',
-    'poisson',
+    "bernoulli",
+    "binomial",
+    "categorical",
+    "discrete_uniform",
+    "geometric",
+    "hypergeometric",
+    "negative_binomial",
+    "negative_binomial_mu_phi",
+    "poisson",
 ]
 
 continuous_dists = [
-    'normal',
-    'uniform',
+    "beta",
+    "cauchy",
+    "exponential",
+    "gamma",
+    "inverse_gamma",
+    "lognormal",
+    "normal",
+    "pareto",
+    "student_t",
+    "uniform",
+    "weibull",
 ]
 
 
@@ -124,7 +133,19 @@ def write_discrete(dist):
 
 
 def write_continuous(dist):
-    extra_funs = {"normal": ["erf"], "uniform": []}
+    extra_funs = {
+        "beta": ["lngamma", "lnbeta", "regularized_incomplete_beta", "betacf", "log1p"],
+        "cauchy": [],
+        "exponential": [],
+        "gamma": ["lngamma", "gammainc_u", "gammainc_l"],
+        "inverse_gamma": ["lngamma", "gammainc_u", "gammainc_l"],
+        "lognormal": ["erf"],
+        "normal": ["erf"],
+        "pareto": [],
+        "student_t": ["lngamma", "log1p", "regularized_incomplete_beta", "betacf"],
+        "uniform": [],
+        "weibull": [],
+    }
 
     with open("../distribution_explorer/callbacks.py", "a") as f:
         f.write(f'{dist}_callback = """')

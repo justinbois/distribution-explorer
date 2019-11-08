@@ -12,7 +12,8 @@ var xRangeMax = xrange.end;
 if (dist == 'lognormal' 
     || dist == 'gamma' 
     || dist == 'exponential' 
-    || dist == 'inv_gamma') {
+    || dist == 'inv_gamma'
+    || dist == 'weibull') {
 	xRangeMin = 0.0;
 }
 else if (dist == 'beta') { 

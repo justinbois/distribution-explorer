@@ -62,6 +62,26 @@ function arange(start, stop) {
 }
 
 
+function log1p(x) {
+    // log of 1 + x, 
+    // adapted from Andreas Madsen's mathfn, Copyright (c) 2013 Andreas Madsen
+    if (x <= -1.0) {
+        throw new RangeError('Argument must be greater than -1.0');
+    }
+
+    // x is large enough that the obvious evaluation is OK
+    else if (Math.abs(x) > 1e-4) {
+        return Math.log(1.0 + x);
+    }
+
+    // Use Taylor approx. log(1 + x) = x - x^2/2 with error roughly x^3/3
+    // Since |x| < 10^-4, |x|^3 < 10^-12, relative error less than 10^-8
+    else {
+        return (-0.5*x + 1.0)*x;
+    }
+}
+
+
 function erf(x) {
     // Error function using polynomial approximation (accurate to about 10^-7)
     var a = [1.00002368,
@@ -94,7 +114,84 @@ function lnchoice(n, k) {
 
 
 function lnbeta(x, y) {
+    if (x < 0 || y < 0) {
+        throw RangeError('Arguments must be positive.');
+    }
+    else if (x === 0 && y === 0) return NaN;
+    else if (x === 0 || y === 0) return Infinity;
+
     return lngamma(x) + lngamma(y) - lngamma(x + y);
+}
+
+
+function betacf(x, a, b) {
+    // From Andreas Madsen's mathfn, Copyright (c) 2013 Andreas Madsen
+    // Computes incomplete beta function as a continues fraction
+    var fpmin = 1e-30,
+        m = 1,
+        m2, aa, c, d, del, h, qab, qam, qap;
+    // These q's will be used in factors that occur in the coefficients
+    qab = a + b;
+    qap = a + 1;
+    qam = a - 1;
+    c = 1;
+    d = 1 - qab * x / qap;
+    if (Math.abs(d) < fpmin) d = fpmin;
+    d = 1 / d;
+    h = d;
+    for (; m <= 100; m++) {
+        m2 = 2 * m;
+        aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+        // One step (the even one) of the recurrence
+        d = 1 + aa * d;
+        if (Math.abs(d) < fpmin) d = fpmin;
+        c = 1 + aa / c;
+        if (Math.abs(c) < fpmin) c = fpmin;
+        d = 1 / d;
+        h *= d * c;
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+        // Next step of the recurrence (the odd one)
+        d = 1 + aa * d;
+        if (Math.abs(d) < fpmin) d = fpmin;
+        c = 1 + aa / c;
+        if (Math.abs(c) < fpmin) c = fpmin;
+        d = 1 / d;
+        del = d * c;
+        h *= del;
+        if (Math.abs(del - 1.0) < 3e-7) break;
+    }
+    return h;
+}
+
+
+function regularized_incomplete_beta(x, a, b) {
+    // From Andreas Madsen's mathfn, Copyright (c) 2013 Andreas Madsen
+    // Computes incomplete beta function as a continued fraction
+    if (x < 0 || x > 1) {
+        throw new RangeError('First argument must be between 0 and 1.');
+    }
+
+    // Special cases, there can make trouble otherwise
+    else if (a === 1 && b === 1) return x;
+    else if (x === 0) return 0;
+    else if (x === 1) return 1;
+    else if (a === 0) return 1;
+    else if (b === 0) return 0;
+
+    else {
+        var bt = Math.exp(lngamma(a + b) - lngamma(a) - lngamma(b) + a * Math.log(x) + b * log1p(-x));
+
+        // Use continued fraction directly.
+        if (x < (a + 1) / (a + b + 2)) return bt * betacf(x, a, b) / a;
+
+        // else use continued fraction after making the symmetry transformation.
+        else return 1 - bt * betacf(1 - x, b, a) / b;
+    }
+}
+
+
+function incomplete_beta(x, a, b) {
+    return regularized_incomplete_beta(x, a, b) * Math.exp(lnbeta(a, b));
 }
 
 
@@ -123,6 +220,82 @@ function lngamma(z) {
     var t = z + p.length - 0.5;
 
     return 0.5 * Math.log(2*Math.PI) + (z + 0.5)*Math.log(t) - t + Math.log(Ag);
+}
+
+
+function gammainc_u(x, s, regularized) {
+    // Adapted from Compute.io package
+    var EPSILON = 1e-12;
+
+    if (x <= 1.1 || x <= s) {
+        if (regularized !== false) {
+            return 1 - gammainc_l(x, s, regularized);
+        } else {
+            return Math.exp(lngamma(s)) - gammainc_l(x, s, regularized);
+        }
+    }
+
+    var f = 1 + x - s,
+        C = f,
+        D = 0,
+        i = 1,
+        a, b, chg;
+    for (i = 1; i < 10000; i++) {
+        a = i * (s - i);
+        b = (i<<1) + 1 + x - s;
+        D = b + a * D;
+        C = b + a / C;
+        D = 1 / D;
+        chg = C * D;
+        f *= chg;
+        if (Math.abs(chg - 1) < EPSILON) {
+            break;
+        }
+    }
+    if (regularized !== false) {
+        return Math.exp(s * Math.log(x) - x - lngamma(s) - Math.log(f));
+    } else {
+        return Math.exp(s * Math.log(x) - x - Math.log(f));
+    }
+}
+
+
+function gammainc_l(x, s, regularized) {
+    // Adapted from Compute.io package
+    var EPSILON = 1e-12;
+
+    if (x === 0) {
+        return 0;
+    }
+    if (x < 0 || s <= 0) {
+        return NaN;
+    }
+
+    if(x > 1.1 && x > s) {
+        if (regularized !== false) {
+            return 1 - gammainc_u(x, s, regularized);
+        } else {
+            return Math.exp(lngamma(s)) - gammainc_u(x, s, regularized);
+        }
+    }
+
+    var ft,
+        r = s,
+        c = 1,
+        pws = 1;
+
+    if (regularized !== false) {
+        ft = s * Math.log(x) - x - lngamma(s);
+    } else {
+        ft = s * Math.log(x) - x;
+    }
+    ft = Math.exp(ft);
+    do {
+        r += 1;
+        c *= x/r;
+        pws += c;
+    } while (c / pws > EPSILON);
+    return pws*ft/s;
 }
 
 
