@@ -798,7 +798,7 @@ def explore(
             params[i]["is_int"] = False
         if params[i]["is_int"]:
             params[i]["step"] = 1
-            params[i]["start"] = 1
+            params[i]["start"] = int(params[i]["start"])
 
     if discrete:
         p_y_axis_label = "PMF"

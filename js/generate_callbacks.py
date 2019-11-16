@@ -62,11 +62,11 @@ slider.end = Math.min(max_value, Number(cb_obj.value));
 """
 
 start_int = """
-slider.start = Math.max(1, Math.floor(Number(cb_obj.value)));
+slider.start = Math.max(Math.floor(min_value), Math.floor(Number(cb_obj.value)));
 """
 
 end_int = """
-slider.end = Math.floor(Number(cb_obj.value));
+slider.end = Math.min(Math.floor(max_value), Math.floor(Number(cb_obj.value)));
 """
 
 '''
