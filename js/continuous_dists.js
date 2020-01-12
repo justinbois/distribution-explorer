@@ -69,7 +69,7 @@ function halfnormal_prob(x, mu, sigma, {}) {
 function halfnormal_cdf(x, mu, sigma, {}) {
     if (x < mu) return 0.0;
 
-    return erf(x / sigma / Math.sqrt(2));
+    return erf((x - mu) / sigma / Math.sqrt(2));
 }
 
 

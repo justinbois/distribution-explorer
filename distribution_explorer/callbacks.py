@@ -3123,7 +3123,7 @@ function probFun(x, mu, sigma, {}) {
 function cdfFun(x, mu, sigma, {}) {
     if (x < mu) return 0.0;
 
-    return erf(x / sigma / Math.sqrt(2));
+    return erf((x - mu) / sigma / Math.sqrt(2));
 }
 
 // Extract data from sources
