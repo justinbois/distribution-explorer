@@ -26,6 +26,7 @@ continuous_dists = [
     "cauchy",
     "exponential",
     "gamma",
+    "halfnormal",
     "inverse_gamma",
     "lognormal",
     "normal",
@@ -115,6 +116,8 @@ def _funs(dist):
             lambda x, alpha, beta: st.gamma.pdf(x, alpha, loc=0, scale=1 / beta),
             lambda x, alpha, beta: st.gamma.cdf(x, alpha, loc=0, scale=1 / beta),
         )
+    elif dist == "halfnormal":
+        return st.halfnorm.pdf, st.halfnorm.cdf
     elif dist == "inverse_gamma":
         return (
             lambda x, alpha, beta: st.invgamma.pdf(x, alpha, loc=0, scale=beta),
@@ -480,6 +483,33 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         x_max = 10
         x_axis_label = "y"
         title = "Gamma"
+    elif dist == "half-normal" or dist == "halfnormal":
+        params = [
+            dict(
+                name="µ",
+                start=0,
+                end=1.0,
+                value=0,
+                step=0.01,
+                is_int=False,
+                min_value="-Infinity",
+                max_value="Infinity",
+            ),
+            dict(
+                name="σ",
+                start=0,
+                end=1,
+                value=0.2,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+        ]
+        x_min = 0
+        x_max = 4
+        x_axis_label = "y"
+        title = "Half-Normal"
     elif dist == "inverse_gamma":
         params = [
             dict(

@@ -58,6 +58,21 @@ function gamma_cdf(x, alpha, beta, {}) {
 }
 
 
+function halfnormal_prob(x, mu, sigma, {}) {
+    if (x < mu) return 0.0;
+
+    var expTerm = (Math.pow(x - mu, 2) / 2.0 / Math.pow(sigma, 2));
+    return Math.exp(-expTerm) / sigma * Math.sqrt(2,0 / Math.PI);
+}
+
+
+function halfnormal_cdf(x, mu, sigma, {}) {
+    if (x < mu) return 0.0;
+
+    return erf(x / sigma / Math.sqrt(2));
+}
+
+
 function inverse_gamma_prob(x, alpha, beta, {}) {
     if (x < 0) return 0.0;
 
