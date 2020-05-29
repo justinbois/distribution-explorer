@@ -26,7 +26,9 @@ continuous_dists = [
     "cauchy",
     "exponential",
     "gamma",
+    "halfcauchy",
     "halfnormal",
+    "halfstudent_t",
     "inverse_gamma",
     "lognormal",
     "normal",
@@ -66,6 +68,20 @@ def _categorical_cdf(x, theta_1, theta_2, theta_3):
         return np.array([np.nan] * len(x))
 
     return np.array([_categorical_cdf_indiv(x_val, thetas) for x_val in x])
+
+
+def _halfstudent_t_pdf(x, nu, mu, sigma):
+    out = np.empty_like(x)
+    out[x >= mu] = 2 * st.t.pdf(x[x >= mu], nu, mu, sigma)
+    out[x < mu] = 0.0
+    return out
+
+
+def _halfstudent_t_cdf(x, nu, mu, sigma):
+    out = np.empty_like(x)
+    out[x >= mu] = 2 * st.t.cdf(x[x >= mu], nu, mu, sigma) - 1
+    out[x < mu] = 0.0
+    return out
 
 
 def _funs(dist):
@@ -116,8 +132,12 @@ def _funs(dist):
             lambda x, alpha, beta: st.gamma.pdf(x, alpha, loc=0, scale=1 / beta),
             lambda x, alpha, beta: st.gamma.cdf(x, alpha, loc=0, scale=1 / beta),
         )
+    elif dist == "halfcauchy":
+        return st.halfcauchy.pdf, st.halfcauchy.cdf
     elif dist == "halfnormal":
         return st.halfnorm.pdf, st.halfnorm.cdf
+    elif dist == "halfstudent_t":
+        return st.t.pdf, st.t.cdf
     elif dist == "inverse_gamma":
         return (
             lambda x, alpha, beta: st.invgamma.pdf(x, alpha, loc=0, scale=beta),
@@ -483,6 +503,33 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         x_max = 10
         x_axis_label = "y"
         title = "Gamma"
+    elif dist == "half-cauchy" or dist == "halfcauchy":
+        params = [
+            dict(
+                name="µ",
+                start=0,
+                end=1.0,
+                value=0,
+                step=0.01,
+                is_int=False,
+                min_value="-Infinity",
+                max_value="Infinity",
+            ),
+            dict(
+                name="σ",
+                start=0,
+                end=1,
+                value=0.2,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+        ]
+        x_min = 0
+        x_max = 4
+        x_axis_label = "y"
+        title = "Half-Cauchy"
     elif dist == "half-normal" or dist == "halfnormal":
         params = [
             dict(
@@ -510,6 +557,43 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         x_max = 4
         x_axis_label = "y"
         title = "Half-Normal"
+    elif dist == "halfstudent_t":
+        params = [
+            dict(
+                name="ν",
+                start=1,
+                end=10,
+                value=2,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+            dict(
+                name="μ",
+                start=0.0,
+                end=1.0,
+                value=0,
+                step=0.01,
+                is_int=False,
+                min_value="-Infinity",
+                max_value="Infinity",
+            ),
+            dict(
+                name="σ",
+                start=0.1,
+                end=1.0,
+                value=0.2,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+        ]
+        x_min = 0
+        x_max = 2
+        x_axis_label = "y"
+        title = "Half-Student-t"
     elif dist == "inverse_gamma":
         params = [
             dict(

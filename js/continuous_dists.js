@@ -58,11 +58,25 @@ function gamma_cdf(x, alpha, beta, {}) {
 }
 
 
+function halfcauchy_prob(x, mu, sigma, {}) {
+    if (x < mu) return 0.0;
+
+    return 2.0 / Math.PI / sigma / (1 + Math.pow((x - mu) / sigma, 2));
+}
+
+
+function halfcauchy_cdf(x, mu, sigma, {}) {
+    if (x < mu) return 0.0;
+
+    return 2.0 * Math.atan((x - mu) / sigma) / Math.PI;
+}
+
+
 function halfnormal_prob(x, mu, sigma, {}) {
     if (x < mu) return 0.0;
 
     var expTerm = (Math.pow(x - mu, 2) / 2.0 / Math.pow(sigma, 2));
-    return Math.exp(-expTerm) / sigma * Math.sqrt(2,0 / Math.PI);
+    return Math.exp(-expTerm) / sigma * Math.sqrt(2.0 / Math.PI);
 }
 
 
@@ -70,6 +84,27 @@ function halfnormal_cdf(x, mu, sigma, {}) {
     if (x < mu) return 0.0;
 
     return erf((x - mu) / sigma / Math.sqrt(2));
+}
+
+
+function halfstudent_t_prob(x, nu, mu, sigma) {
+    if (x < mu) return 0.0;
+
+    var lnprob;
+
+    lnprob = Math.log(2.0) + lngamma((nu+1)/2) - lngamma(nu/2) - Math.log(Math.PI * nu) / 2 
+             - Math.log(sigma) - (nu+1)/2 * log1p(Math.pow(x - mu, 2) / nu / Math.pow(sigma, 2));
+
+    return Math.exp(lnprob);
+}
+
+
+function halfstudent_t_cdf(x, nu, mu, sigma) {
+    if (x < mu) return 0.0;
+
+    var y = (x - mu) / sigma;
+
+    return 1 - regularized_incomplete_beta(nu / (y**2 + nu), 0.5*nu, 0.5);
 }
 
 

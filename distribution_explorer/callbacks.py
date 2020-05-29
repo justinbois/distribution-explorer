@@ -3057,6 +3057,88 @@ source_p.change.emit();
 source_c.change.emit();
 """
 
+halfcauchy_callback = """function linspace(start, stop, n) {
+	var x = [];
+	var currValue = start;
+	var step = (stop - start) / (n - 1);
+	for (var i = 0; i < n; i++) {
+		x.push(currValue);
+		currValue += step;
+	}
+	return x;
+}
+
+function update_y_p(probFun, x_p, arg1, arg2, arg3) {
+    // Compute PMF/PDF
+    var y_p = [];
+    for (var i = 0; i < x_p.length; i++) {
+      y_p.push(probFun(x_p[i], arg1, arg2, arg3));
+    }
+
+    return y_p;
+}
+
+function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
+    var y_c = [];
+    for (var i = 1; i < x_c.length; i ++)
+        y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
+
+    return y_c;
+}
+
+function probFun(x, mu, sigma, {}) {
+    if (x < mu) return 0.0;
+
+    return 2.0 / Math.PI / sigma / (1 + Math.pow((x - mu) / sigma, 2));
+}
+
+function cdfFun(x, mu, sigma, {}) {
+    if (x < mu) return 0.0;
+
+    return 2.0 * Math.atan((x - mu) / sigma) / Math.PI;
+}
+
+// Extract data from sources
+var data_p = source_p.data;
+var data_c = source_c.data;
+var x_p = data_p['x'];
+var y_p = data_p['y_p'];
+var x_c = data_c['x'];
+var y_c = data_c['y_c'];
+var xRangeMin = xrange.start;
+var xRangeMax = xrange.end;
+
+// Make corrections for start and end points based on support
+if (dist == 'lognormal' 
+    || dist == 'gamma' 
+    || dist == 'exponential' 
+    || dist == 'inv_gamma'
+    || dist == 'weibull') {
+	xRangeMin = 0.0;
+}
+else if (dist == 'beta') { 
+    xRangeMin = 0.0;
+    xRangeMax = 1.0;
+}
+
+// x-values to evaluate PDF and CDF
+x_p = linspace(xRangeMin, xRangeMax, n);
+x_c = x_p;
+
+// Update sources with new x-values
+source_p.data['x'] = x_p;
+source_c.data['x'] = x_c;
+
+// Update the PDF and CDF
+source_p.data['y_p'] = update_y_p(probFun, 
+    x_p, arg1.value, arg2.value, arg3.value);
+source_c.data['y_c'] = update_y_c_continuous(cdfFun, 
+    x_c, arg1.value, arg2.value, arg3.value);
+
+source_p.change.emit();
+source_c.change.emit();
+"""
+
 halfnormal_callback = """function linspace(start, stop, n) {
 	var x = [];
 	var currValue = start;
@@ -3117,13 +3199,220 @@ function probFun(x, mu, sigma, {}) {
     if (x < mu) return 0.0;
 
     var expTerm = (Math.pow(x - mu, 2) / 2.0 / Math.pow(sigma, 2));
-    return Math.exp(-expTerm) / sigma * Math.sqrt(2,0 / Math.PI);
+    return Math.exp(-expTerm) / sigma * Math.sqrt(2.0 / Math.PI);
 }
 
 function cdfFun(x, mu, sigma, {}) {
     if (x < mu) return 0.0;
 
     return erf((x - mu) / sigma / Math.sqrt(2));
+}
+
+// Extract data from sources
+var data_p = source_p.data;
+var data_c = source_c.data;
+var x_p = data_p['x'];
+var y_p = data_p['y_p'];
+var x_c = data_c['x'];
+var y_c = data_c['y_c'];
+var xRangeMin = xrange.start;
+var xRangeMax = xrange.end;
+
+// Make corrections for start and end points based on support
+if (dist == 'lognormal' 
+    || dist == 'gamma' 
+    || dist == 'exponential' 
+    || dist == 'inv_gamma'
+    || dist == 'weibull') {
+	xRangeMin = 0.0;
+}
+else if (dist == 'beta') { 
+    xRangeMin = 0.0;
+    xRangeMax = 1.0;
+}
+
+// x-values to evaluate PDF and CDF
+x_p = linspace(xRangeMin, xRangeMax, n);
+x_c = x_p;
+
+// Update sources with new x-values
+source_p.data['x'] = x_p;
+source_c.data['x'] = x_c;
+
+// Update the PDF and CDF
+source_p.data['y_p'] = update_y_p(probFun, 
+    x_p, arg1.value, arg2.value, arg3.value);
+source_c.data['y_c'] = update_y_c_continuous(cdfFun, 
+    x_c, arg1.value, arg2.value, arg3.value);
+
+source_p.change.emit();
+source_c.change.emit();
+"""
+
+halfstudent_t_callback = """function linspace(start, stop, n) {
+	var x = [];
+	var currValue = start;
+	var step = (stop - start) / (n - 1);
+	for (var i = 0; i < n; i++) {
+		x.push(currValue);
+		currValue += step;
+	}
+	return x;
+}
+
+function update_y_p(probFun, x_p, arg1, arg2, arg3) {
+    // Compute PMF/PDF
+    var y_p = [];
+    for (var i = 0; i < x_p.length; i++) {
+      y_p.push(probFun(x_p[i], arg1, arg2, arg3));
+    }
+
+    return y_p;
+}
+
+function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
+    var y_c = [];
+    for (var i = 1; i < x_c.length; i ++)
+        y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
+
+    return y_c;
+}
+
+function lngamma(z) {
+    // Compute log of the Gamma function using Lanczos approx.,
+    // see https://en.wikipedia.org/wiki/Lanczos_approximation.
+
+    if(z < 0) return Number('0/0');
+
+    if (z < 0.5) return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - lngamma(1-z);
+
+    var p = [676.5203681218851,
+             -1259.1392167224028,
+             771.32342877765313,
+             -176.61502916214059,
+             12.507343278686905,
+             -0.13857109526572012,
+             9.9843695780195716e-6,
+             1.5056327351493116e-7];
+
+    z -= 1.0;
+    var Ag = 0.99999999999980993;
+    for (var i = 0; i < p.length; i++) {
+        Ag += p[i] / (z + i + 1);
+    }
+    var t = z + p.length - 0.5;
+
+    return 0.5 * Math.log(2*Math.PI) + (z + 0.5)*Math.log(t) - t + Math.log(Ag);
+}
+
+
+
+function log1p(x) {
+    // log of 1 + x, 
+    // adapted from Andreas Madsen's mathfn, Copyright (c) 2013 Andreas Madsen
+    if (x <= -1.0) {
+        throw new RangeError('Argument must be greater than -1.0');
+    }
+
+    // x is large enough that the obvious evaluation is OK
+    else if (Math.abs(x) > 1e-4) {
+        return Math.log(1.0 + x);
+    }
+
+    // Use Taylor approx. log(1 + x) = x - x^2/2 with error roughly x^3/3
+    // Since |x| < 10^-4, |x|^3 < 10^-12, relative error less than 10^-8
+    else {
+        return (-0.5*x + 1.0)*x;
+    }
+}
+
+
+
+function regularized_incomplete_beta(x, a, b) {
+    // From Andreas Madsen's mathfn, Copyright (c) 2013 Andreas Madsen
+    // Computes incomplete beta function as a continued fraction
+    if (x < 0 || x > 1) {
+        throw new RangeError('First argument must be between 0 and 1.');
+    }
+
+    // Special cases, there can make trouble otherwise
+    else if (a === 1 && b === 1) return x;
+    else if (x === 0) return 0;
+    else if (x === 1) return 1;
+    else if (a === 0) return 1;
+    else if (b === 0) return 0;
+
+    else {
+        var bt = Math.exp(lngamma(a + b) - lngamma(a) - lngamma(b) + a * Math.log(x) + b * log1p(-x));
+
+        // Use continued fraction directly.
+        if (x < (a + 1) / (a + b + 2)) return bt * betacf(x, a, b) / a;
+
+        // else use continued fraction after making the symmetry transformation.
+        else return 1 - bt * betacf(1 - x, b, a) / b;
+    }
+}
+
+
+
+function betacf(x, a, b) {
+    // From Andreas Madsen's mathfn, Copyright (c) 2013 Andreas Madsen
+    // Computes incomplete beta function as a continues fraction
+    var fpmin = 1e-30,
+        m = 1,
+        m2, aa, c, d, del, h, qab, qam, qap;
+    // These q's will be used in factors that occur in the coefficients
+    qab = a + b;
+    qap = a + 1;
+    qam = a - 1;
+    c = 1;
+    d = 1 - qab * x / qap;
+    if (Math.abs(d) < fpmin) d = fpmin;
+    d = 1 / d;
+    h = d;
+    for (; m <= 100; m++) {
+        m2 = 2 * m;
+        aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+        // One step (the even one) of the recurrence
+        d = 1 + aa * d;
+        if (Math.abs(d) < fpmin) d = fpmin;
+        c = 1 + aa / c;
+        if (Math.abs(c) < fpmin) c = fpmin;
+        d = 1 / d;
+        h *= d * c;
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+        // Next step of the recurrence (the odd one)
+        d = 1 + aa * d;
+        if (Math.abs(d) < fpmin) d = fpmin;
+        c = 1 + aa / c;
+        if (Math.abs(c) < fpmin) c = fpmin;
+        d = 1 / d;
+        del = d * c;
+        h *= del;
+        if (Math.abs(del - 1.0) < 3e-7) break;
+    }
+    return h;
+}
+
+
+
+function probFun(x, nu, mu, sigma) {
+    if (x < mu) return 0.0;
+
+    var lnprob;
+
+    lnprob = Math.log(2.0) + lngamma((nu+1)/2) - lngamma(nu/2) - Math.log(Math.PI * nu) / 2 
+             - Math.log(sigma) - (nu+1)/2 * log1p(Math.pow(x - mu, 2) / nu / Math.pow(sigma, 2));
+
+    return Math.exp(lnprob);
+}
+
+function cdfFun(x, nu, mu, sigma) {
+    if (x < mu) return 0.0;
+
+    var y = (x - mu) / sigma;
+
+    return 1 - regularized_incomplete_beta(nu / (y**2 + nu), 0.5*nu, 0.5);
 }
 
 // Extract data from sources
@@ -3856,7 +4145,9 @@ callbacks = {
 	"exponential": exponential_callback,
 	"gamma": gamma_callback,
 	"inverse_gamma": inverse_gamma_callback,
+	"halfcauchy": halfcauchy_callback,
 	"halfnormal": halfnormal_callback,
+	"halfstudent_t": halfstudent_t_callback,
 	"lognormal": lognormal_callback,
 	"normal": normal_callback,
 	"pareto": pareto_callback,
