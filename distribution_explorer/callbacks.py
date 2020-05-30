@@ -70,7 +70,7 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points for discrete distributions
-if (dist == 'bernoulli' || dist == 'beta') {
+if (dist == 'bernoulli') {
 	xRangeMin = 0.0;
 	xRangeMax = 1.0;
 }
@@ -85,7 +85,7 @@ else {
 
 // x-values to evaluate PMF and CDF
 x_p = arange(xRangeMin, xRangeMax+1);
-xSize = xRangeMax - xRangeMin;
+let xSize = xRangeMax - xRangeMin;
 
 x_c = [];
 for (var i = 0; i < x_p.length; i++) x_c.push(x_p[i], x_p[i]);
@@ -448,7 +448,7 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points for discrete distributions
-if (dist == 'bernoulli' || dist == 'beta') {
+if (dist == 'bernoulli') {
 	xRangeMin = 0.0;
 	xRangeMax = 1.0;
 }
@@ -463,7 +463,7 @@ else {
 
 // x-values to evaluate PMF and CDF
 x_p = arange(xRangeMin, xRangeMax+1);
-xSize = xRangeMax - xRangeMin;
+let xSize = xRangeMax - xRangeMin;
 
 x_c = [];
 for (var i = 0; i < x_p.length; i++) x_c.push(x_p[i], x_p[i]);
@@ -545,7 +545,7 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points for discrete distributions
-if (dist == 'bernoulli' || dist == 'beta') {
+if (dist == 'bernoulli') {
 	xRangeMin = 0.0;
 	xRangeMax = 1.0;
 }
@@ -560,7 +560,7 @@ else {
 
 // x-values to evaluate PMF and CDF
 x_p = arange(xRangeMin, xRangeMax+1);
-xSize = xRangeMax - xRangeMin;
+let xSize = xRangeMax - xRangeMin;
 
 x_c = [];
 for (var i = 0; i < x_p.length; i++) x_c.push(x_p[i], x_p[i]);
@@ -638,7 +638,7 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points for discrete distributions
-if (dist == 'bernoulli' || dist == 'beta') {
+if (dist == 'bernoulli') {
 	xRangeMin = 0.0;
 	xRangeMax = 1.0;
 }
@@ -653,7 +653,7 @@ else {
 
 // x-values to evaluate PMF and CDF
 x_p = arange(xRangeMin, xRangeMax+1);
-xSize = xRangeMax - xRangeMin;
+let xSize = xRangeMax - xRangeMin;
 
 x_c = [];
 for (var i = 0; i < x_p.length; i++) x_c.push(x_p[i], x_p[i]);
@@ -736,7 +736,7 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points for discrete distributions
-if (dist == 'bernoulli' || dist == 'beta') {
+if (dist == 'bernoulli') {
 	xRangeMin = 0.0;
 	xRangeMax = 1.0;
 }
@@ -751,7 +751,7 @@ else {
 
 // x-values to evaluate PMF and CDF
 x_p = arange(xRangeMin, xRangeMax+1);
-xSize = xRangeMax - xRangeMin;
+let xSize = xRangeMax - xRangeMin;
 
 x_c = [];
 for (var i = 0; i < x_p.length; i++) x_c.push(x_p[i], x_p[i]);
@@ -1102,7 +1102,7 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points for discrete distributions
-if (dist == 'bernoulli' || dist == 'beta') {
+if (dist == 'bernoulli') {
 	xRangeMin = 0.0;
 	xRangeMax = 1.0;
 }
@@ -1117,7 +1117,7 @@ else {
 
 // x-values to evaluate PMF and CDF
 x_p = arange(xRangeMin, xRangeMax+1);
-xSize = xRangeMax - xRangeMin;
+let xSize = xRangeMax - xRangeMin;
 
 x_c = [];
 for (var i = 0; i < x_p.length; i++) x_c.push(x_p[i], x_p[i]);
@@ -1495,7 +1495,7 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points for discrete distributions
-if (dist == 'bernoulli' || dist == 'beta') {
+if (dist == 'bernoulli') {
 	xRangeMin = 0.0;
 	xRangeMax = 1.0;
 }
@@ -1510,7 +1510,7 @@ else {
 
 // x-values to evaluate PMF and CDF
 x_p = arange(xRangeMin, xRangeMax+1);
-xSize = xRangeMax - xRangeMin;
+let xSize = xRangeMax - xRangeMin;
 
 x_c = [];
 for (var i = 0; i < x_p.length; i++) x_c.push(x_p[i], x_p[i]);
@@ -1891,7 +1891,7 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points for discrete distributions
-if (dist == 'bernoulli' || dist == 'beta') {
+if (dist == 'bernoulli') {
 	xRangeMin = 0.0;
 	xRangeMax = 1.0;
 }
@@ -1906,7 +1906,7 @@ else {
 
 // x-values to evaluate PMF and CDF
 x_p = arange(xRangeMin, xRangeMax+1);
-xSize = xRangeMax - xRangeMin;
+let xSize = xRangeMax - xRangeMin;
 
 x_c = [];
 for (var i = 0; i < x_p.length; i++) x_c.push(x_p[i], x_p[i]);
@@ -2258,7 +2258,7 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points for discrete distributions
-if (dist == 'bernoulli' || dist == 'beta') {
+if (dist == 'bernoulli') {
 	xRangeMin = 0.0;
 	xRangeMax = 1.0;
 }
@@ -2273,7 +2273,7 @@ else {
 
 // x-values to evaluate PMF and CDF
 x_p = arange(xRangeMin, xRangeMax+1);
-xSize = xRangeMax - xRangeMin;
+let xSize = xRangeMax - xRangeMin;
 
 x_c = [];
 for (var i = 0; i < x_p.length; i++) x_c.push(x_p[i], x_p[i]);
@@ -2318,7 +2318,7 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;
@@ -2454,11 +2454,49 @@ function log1p(x) {
 
 
 
+function isone(x) {
+    return Math.abs(1.0 - x) <= 1.0e-8;
+}
+
+
+
+function iszero(x) {
+    return Math.abs(x) <= 1.0e-8;
+}
+
+
+
 function probFun(x, alpha, beta, {}) {
     if (x < 0) return 0.0;
     if (x > 1) return 0.0;
 
-    var lnprob = (alpha - 1) * Math.log(x) + (beta - 1) * Math.log(1-x) - lnbeta(alpha, beta);
+    if (iszero(x)) {
+        console.log('x = 0 in α land');
+        if (alpha == 1) {
+            return Math.exp(-lnbeta(alpha, beta));
+        }
+        else if (alpha > 1) {
+            return 0.0;
+        }
+        else {
+            return NaN;
+        }
+    }
+    else if (isone(x)) {
+        if (beta == 1) {
+            return Math.exp(-lnbeta(alpha, beta));
+        }
+        else if (beta > 1) {
+            return 0.0;
+        }
+        else {
+            return NaN;
+        }
+    }
+
+    if (x > 0.99) console.log('x = ', x);
+
+    let lnprob = (alpha - 1.0) * Math.log(x) + (beta - 1.0) * Math.log(1.0 - x) - lnbeta(alpha, beta);
 
     return Math.exp(lnprob);
 }
@@ -2534,7 +2572,7 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;
@@ -2612,7 +2650,7 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;
@@ -2694,7 +2732,7 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;
@@ -2887,7 +2925,7 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;
@@ -3080,7 +3118,7 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;
@@ -3162,7 +3200,7 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;
@@ -3272,7 +3310,7 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;
@@ -3479,7 +3517,7 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;
@@ -3589,7 +3627,7 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;
@@ -3695,7 +3733,7 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;
@@ -3778,7 +3816,7 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;
@@ -3986,7 +4024,7 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;
@@ -4068,7 +4106,7 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;

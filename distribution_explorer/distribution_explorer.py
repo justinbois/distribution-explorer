@@ -429,7 +429,7 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
             ),
         ]
         x_min = 0
-        x_max = 30
+        x_max = 1
         x_axis_label = "θ"
         title = "Beta"
     elif dist == "cauchy":
@@ -1022,7 +1022,8 @@ def explore(
 
     # Execute callback upon changing x-axis values
     if dist not in ["bernoulli", "categorical"]:
-        p_p.x_range.callback = callback
+        p_p.x_range.js_on_change('start', callback)
+        p_p.x_range.js_on_change('end', callback)
 
     # Text boxes for setting slider ranges (Bokeh 1.1.0 and above)
     if bokeh.__version__ > "1.1.0" or slider_range_textbox:
