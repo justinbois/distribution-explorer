@@ -1,3 +1,13 @@
+function isone(x) {
+    return Math.abs(1.0 - x) <= 1.0e-8;
+}
+
+
+function iszero(x) {
+    return Math.abs(x) <= 1.0e-8;
+}
+
+
 function discrete_cdf(cumsum, y_p) {
     var y_c = [];
 
@@ -36,7 +46,7 @@ function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
 
 function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
     var y_c = [];
-    for (var i = 1; i < x_c.length; i ++)
+    for (var i = 0; i < x_c.length; i ++)
         y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
 
     return y_c;

@@ -137,7 +137,8 @@ def write_discrete(dist):
 
 def write_continuous(dist):
     extra_funs = {
-        "beta": ["lngamma", "lnbeta", "regularized_incomplete_beta", "betacf", "log1p"],
+        "beta": ["lngamma", "lnbeta", "regularized_incomplete_beta", "betacf", "log1p",
+                 "isone", "iszero"],
         "cauchy": [],
         "exponential": [],
         "gamma": ["lngamma", "gammainc_u", "gammainc_l"],

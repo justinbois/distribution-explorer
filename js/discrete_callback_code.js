@@ -9,7 +9,7 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points for discrete distributions
-if (dist == 'bernoulli' || dist == 'beta') {
+if (dist == 'bernoulli') {
 	xRangeMin = 0.0;
 	xRangeMax = 1.0;
 }
@@ -24,7 +24,7 @@ else {
 
 // x-values to evaluate PMF and CDF
 x_p = arange(xRangeMin, xRangeMax+1);
-xSize = xRangeMax - xRangeMin;
+let xSize = xRangeMax - xRangeMin;
 
 x_c = [];
 for (var i = 0; i < x_p.length; i++) x_c.push(x_p[i], x_p[i]);

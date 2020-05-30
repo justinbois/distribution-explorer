@@ -2,7 +2,33 @@ function beta_prob(x, alpha, beta, {}) {
     if (x < 0) return 0.0;
     if (x > 1) return 0.0;
 
-    var lnprob = (alpha - 1) * Math.log(x) + (beta - 1) * Math.log(1-x) - lnbeta(alpha, beta);
+    if (iszero(x)) {
+        console.log('x = 0 in α land');
+        if (alpha == 1) {
+            return Math.exp(-lnbeta(alpha, beta));
+        }
+        else if (alpha > 1) {
+            return 0.0;
+        }
+        else {
+            return NaN;
+        }
+    }
+    else if (isone(x)) {
+        if (beta == 1) {
+            return Math.exp(-lnbeta(alpha, beta));
+        }
+        else if (beta > 1) {
+            return 0.0;
+        }
+        else {
+            return NaN;
+        }
+    }
+
+    if (x > 0.99) console.log('x = ', x);
+
+    let lnprob = (alpha - 1.0) * Math.log(x) + (beta - 1.0) * Math.log(1.0 - x) - lnbeta(alpha, beta);
 
     return Math.exp(lnprob);
 }
