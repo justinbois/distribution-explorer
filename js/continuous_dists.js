@@ -3,7 +3,6 @@ function beta_prob(x, alpha, beta, {}) {
     if (x > 1) return 0.0;
 
     if (iszero(x)) {
-        console.log('x = 0 in α land');
         if (alpha == 1) {
             return Math.exp(-lnbeta(alpha, beta));
         }
@@ -25,8 +24,6 @@ function beta_prob(x, alpha, beta, {}) {
             return NaN;
         }
     }
-
-    if (x > 0.99) console.log('x = ', x);
 
     let lnprob = (alpha - 1.0) * Math.log(x) + (beta - 1.0) * Math.log(1.0 - x) - lnbeta(alpha, beta);
 
