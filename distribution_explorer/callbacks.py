@@ -56,7 +56,7 @@ function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
 function probFun(x, theta, {}, {}) {
 	if (x == 0) return 1 - theta;
 	else if (x == 1) return theta;
-	else return 0.0;
+	else return NaN;
 }
 
 // Extract data from sources
@@ -420,7 +420,7 @@ function lnfactorial(n) {
 
 
 function probFun(n, N, theta, {}) {
-    if (n > N || n < 0) return 0.0;
+    if (n > N || n < 0) return NaN;
 
     if (theta == 0) {
         if (n == 0) return 1.0;
@@ -527,7 +527,7 @@ function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
 function probFun(cat, theta1, theta2, theta3) {
     var theta4 = 1 - theta1 - theta2 - theta3
     if (theta4 < 0) return 0.0;
-    if (![1, 2, 3, 4].includes(cat)) return 0.0;
+    if (![1, 2, 3, 4].includes(cat)) return NaN;
 
     var probs = [theta1, theta2, theta3, theta4]
 
@@ -622,9 +622,9 @@ function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
 }
 
 function probFun(n, low, high, {}) {
-    if (low > high || n < low || n > high) return 0.0
+    if (low > high || n < low || n > high) return NaN;
 
-    return 1 / (high - low + 1)
+    return 1 / (high - low + 1);
 }
 
 // Extract data from sources
@@ -720,9 +720,11 @@ function probFun(x, theta, {}, {}) {
 		return 0.0;
 	}
 
-	if (x < 0 || theta == 0) return 0.0;
+    if (theta == 0) return 0.0;
 
-	return Math.exp(x * Math.log(1-theta) + Math.log(theta))
+    if (x < 0) return NaN;
+
+	return Math.exp(x * Math.log(1-theta) + Math.log(theta));
 }
 
 // Extract data from sources
@@ -1086,7 +1088,7 @@ function lnfactorial(n) {
 
 
 function probFun(n, N, a, b) {
-    if (n < Math.max(0, N-b) || n > Math.min(N, a)) return 0.0;
+    if (n < Math.max(0, N-b) || n > Math.min(N, a)) return NaN;
 
     return Math.exp(lnchoice(a, n) + lnchoice(b, N-n) - lnchoice(a+b, N));
 }
@@ -1475,7 +1477,7 @@ function lnfactorial(n) {
 
 
 function probFun(y, alpha, beta, {}) {
-    if (y < 0) return 0.0;
+    if (y < 0) return NaN;
 
     return Math.exp(lngamma(y + alpha)
                     - lngamma(alpha)
@@ -1868,7 +1870,7 @@ function lnfactorial(n) {
 
 
 function probFun(y, mu, phi, {}) {
-    if (y < 0) return 0.0;
+    if (y < 0) return NaN;
 
     var alpha = phi;
     var beta = phi/mu;
@@ -2235,7 +2237,7 @@ function lnfactorial(n) {
 
 
 function probFun(n, lam, {}, {}) {
-    if (n < 0) return 0.0;
+    if (n < 0) return NaN;
 
     if (lam == 0) {
         if (n == 0) return 1.0;
@@ -2467,11 +2469,10 @@ function iszero(x) {
 
 
 function probFun(x, alpha, beta, {}) {
-    if (x < 0) return 0.0;
-    if (x > 1) return 0.0;
+    if (x < 0) return NaN;
+    if (x > 1) return NaN;
 
     if (iszero(x)) {
-        console.log('x = 0 in α land');
         if (alpha == 1) {
             return Math.exp(-lnbeta(alpha, beta));
         }
@@ -2493,8 +2494,6 @@ function probFun(x, alpha, beta, {}) {
             return NaN;
         }
     }
-
-    if (x > 0.99) console.log('x = ', x);
 
     let lnprob = (alpha - 1.0) * Math.log(x) + (beta - 1.0) * Math.log(1.0 - x) - lnbeta(alpha, beta);
 
@@ -2519,17 +2518,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);
@@ -2597,17 +2598,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);
@@ -2657,7 +2660,7 @@ function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
 }
 
 function probFun(x, beta, {}, {}) {
-    if (x < 0) return 0.0;
+    if (x < 0) return NaN;
 
     return beta * Math.exp(-beta * x);
 }
@@ -2679,17 +2682,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);
@@ -2846,7 +2851,7 @@ function gammainc_l(x, s, regularized) {
 
 
 function probFun(x, alpha, beta, {}) {
-    if (x < 0) return 0.0;
+    if (x < 0) return NaN;
 
     var ln_prob;
 
@@ -2872,17 +2877,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);
@@ -3039,7 +3046,7 @@ function gammainc_l(x, s, regularized) {
 
 
 function probFun(x, alpha, beta, {}) {
-    if (x < 0) return 0.0;
+    if (x < 0) return NaN;
 
     var ln_prob;
 
@@ -3065,17 +3072,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);
@@ -3125,7 +3134,7 @@ function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
 }
 
 function probFun(x, mu, sigma, {}) {
-    if (x < mu) return 0.0;
+    if (x < mu) return NaN;
 
     return 2.0 / Math.PI / sigma / (1 + Math.pow((x - mu) / sigma, 2));
 }
@@ -3147,17 +3156,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);
@@ -3234,7 +3245,7 @@ function erf(x) {
 
 
 function probFun(x, mu, sigma, {}) {
-    if (x < mu) return 0.0;
+    if (x < mu) return NaN;
 
     var expTerm = (Math.pow(x - mu, 2) / 2.0 / Math.pow(sigma, 2));
     return Math.exp(-expTerm) / sigma * Math.sqrt(2.0 / Math.PI);
@@ -3257,17 +3268,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);
@@ -3435,7 +3448,7 @@ function betacf(x, a, b) {
 
 
 function probFun(x, nu, mu, sigma) {
-    if (x < mu) return 0.0;
+    if (x < mu) return NaN;
 
     var lnprob;
 
@@ -3464,17 +3477,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);
@@ -3551,7 +3566,7 @@ function erf(x) {
 
 
 function probFun(x, mu, sigma, {}) {
-    if (x <= 0) return 0.0;
+    if (x <= 0) return NaN;
 
     var expTerm = (Math.pow(Math.log(x) - mu, 2) / 2.0 / Math.pow(sigma, 2))
     return Math.exp(-expTerm) / x / sigma / Math.sqrt(2 * Math.PI);
@@ -3574,17 +3589,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);
@@ -3680,17 +3697,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);
@@ -3740,7 +3759,7 @@ function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
 }
 
 function probFun(x, y_min, alpha, {}) {
-    if (x < y_min) return 0.0;
+    if (x < y_min) return NaN;
 
     var logp = Math.log(alpha) + alpha * Math.log(y_min) - (alpha + 1) * Math.log(x); 
     return Math.exp(logp);
@@ -3763,17 +3782,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);
@@ -3971,17 +3992,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);
@@ -4031,9 +4054,9 @@ function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
 }
 
 function probFun(x, alpha, beta, {}) {
-    if (beta <= alpha || x < alpha || x > beta) return 0.0;
+    if (beta <= alpha || x < alpha || x > beta) return NaN;
 
-    return 1 / (beta - alpha);
+    return 1.0 / (beta - alpha);
 }
 
 function cdfFun(x, alpha, beta, {}) {
@@ -4053,17 +4076,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);
@@ -4113,7 +4138,7 @@ function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
 }
 
 function probFun(x, alpha, sigma, {}) {
-    if (x < 0) return 0.0;
+    if (x < 0) return NaN;
 
     var logp = -Math.pow(x / sigma, alpha) + (alpha - 1) * Math.log(x) 
                 + Math.log(alpha) - alpha * Math.log(sigma);
@@ -4138,17 +4163,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);

@@ -9,17 +9,19 @@ var xRangeMin = xrange.start;
 var xRangeMax = xrange.end;
 
 // Make corrections for start and end points based on support
-if (dist == 'lognormal' 
-    || dist == 'gamma' 
-    || dist == 'exponential' 
-    || dist == 'inv_gamma'
-    || dist == 'weibull') {
-	xRangeMin = 0.0;
-}
-else if (dist == 'beta') { 
-    xRangeMin = 0.0;
-    xRangeMax = 1.0;
-}
+// We're not doing this now because we want to allow zooming
+// JS codes now make anything outside of support NaN.
+// if (dist == 'lognormal' 
+//     || dist == 'gamma' 
+//     || dist == 'exponential' 
+//     || dist == 'inv_gamma'
+//     || dist == 'weibull') {
+// 	xRangeMin = 0.0;
+// }
+// else if (dist == 'beta') { 
+//     xRangeMin = 0.0;
+//     xRangeMax = 1.0;
+// }
 
 // x-values to evaluate PDF and CDF
 x_p = linspace(xRangeMin, xRangeMax, n);

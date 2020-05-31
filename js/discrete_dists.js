@@ -1,12 +1,12 @@
 function bernoulli_prob(x, theta, {}, {}) {
 	if (x == 0) return 1 - theta;
 	else if (x == 1) return theta;
-	else return 0.0;
+	else return NaN;
 }
 
 
 function beta_binomial_prob(n, N, alpha, beta) {
-    if (n > N || n < 0) return 0.0;
+    if (n > N || n < 0) return NaN;
 
     return Math.exp(lnchoice(N, n)
                     + lnbeta(n+alpha, N-n+beta)
@@ -15,7 +15,7 @@ function beta_binomial_prob(n, N, alpha, beta) {
 
 
 function binomial_prob(n, N, theta, {}) {
-    if (n > N || n < 0) return 0.0;
+    if (n > N || n < 0) return NaN;
 
     if (theta == 0) {
         if (n == 0) return 1.0;
@@ -36,7 +36,7 @@ function binomial_prob(n, N, theta, {}) {
 function categorical_prob(cat, theta1, theta2, theta3) {
     var theta4 = 1 - theta1 - theta2 - theta3
     if (theta4 < 0) return 0.0;
-    if (![1, 2, 3, 4].includes(cat)) return 0.0;
+    if (![1, 2, 3, 4].includes(cat)) return NaN;
 
     var probs = [theta1, theta2, theta3, theta4]
 
@@ -45,9 +45,9 @@ function categorical_prob(cat, theta1, theta2, theta3) {
 
 
 function discrete_uniform_prob(n, low, high, {}) {
-    if (low > high || n < low || n > high) return 0.0
+    if (low > high || n < low || n > high) return NaN;
 
-    return 1 / (high - low + 1)
+    return 1 / (high - low + 1);
 }
 
 
@@ -57,21 +57,23 @@ function geometric_prob(x, theta, {}, {}) {
 		return 0.0;
 	}
 
-	if (x < 0 || theta == 0) return 0.0;
+    if (theta == 0) return 0.0;
 
-	return Math.exp(x * Math.log(1-theta) + Math.log(theta))
+    if (x < 0) return NaN;
+
+	return Math.exp(x * Math.log(1-theta) + Math.log(theta));
 }
 
 
 function hypergeometric_prob(n, N, a, b) {
-    if (n < Math.max(0, N-b) || n > Math.min(N, a)) return 0.0;
+    if (n < Math.max(0, N-b) || n > Math.min(N, a)) return NaN;
 
     return Math.exp(lnchoice(a, n) + lnchoice(b, N-n) - lnchoice(a+b, N));
 }
 
 
 function negative_binomial_prob(y, alpha, beta, {}) {
-    if (y < 0) return 0.0;
+    if (y < 0) return NaN;
 
     return Math.exp(lngamma(y + alpha)
                     - lngamma(alpha)
@@ -82,7 +84,7 @@ function negative_binomial_prob(y, alpha, beta, {}) {
 
 
 function negative_binomial_mu_phi_prob(y, mu, phi, {}) {
-    if (y < 0) return 0.0;
+    if (y < 0) return NaN;
 
     var alpha = phi;
     var beta = phi/mu;
@@ -96,7 +98,7 @@ function negative_binomial_mu_phi_prob(y, mu, phi, {}) {
 
 
 function poisson_prob(n, lam, {}, {}) {
-    if (n < 0) return 0.0;
+    if (n < 0) return NaN;
 
     if (lam == 0) {
         if (n == 0) return 1.0;
