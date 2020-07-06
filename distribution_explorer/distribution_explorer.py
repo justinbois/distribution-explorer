@@ -817,16 +817,6 @@ def explore(
 
     Parameters
     ----------
-    x_min : float, default dependent on dist
-        Minimum value that the random variable can take in plots.
-    x_max : float, default dependent on dist
-        Maximum value that the random variable can take in plots.
-    x_axis_type : Either 'linear' or 'log', default 'linear'
-        Whether x-axis is linear or log scale. Applies to both PMF/PDF
-        and CDF.
-    y_axis_type : Either 'linear' or 'log', default 'linear'
-        Whether y-axis is linear or log scale. Applies only to PMF/PDF;
-        the CDF always has a linear y-scale.
     dist : str
         Name of distribution
     params : list of dicts
@@ -841,18 +831,14 @@ def explore(
             value : float, the value of the parameter that the slider
                 takes initially. Must be between start and end.
             step : float, the step size for the slider
+    x_min : float, default dependent on dist
+        Minimum value that the random variable can take in plots.
+    x_max : float, default dependent on dist
+        Maximum value that the random variable can take in plots.
     n : int, default 400
         Number of points to use in making plots of PDF and CDF for
         continuous distributions. This should be large enough to give
         smooth plots.
-    plot_height : int, default 200
-        Height of plots.
-    plot_width : int, default 300
-        Width of plots.
-    x_axis_label : str, default dependent on dist
-        Label for x-axis.
-    title : str, default None
-        Title to be displayed above the PDF or PMF plot.
     slider_range_textbox: bool, default False
         If Bokeh is version number is 1.1.0 or above, text boxes used
         for setting the ranges on parameter values are provided. In
@@ -861,6 +847,8 @@ def explore(
         `slider_range_textbox` is True and the Bokeh version is less
         than 1.1.0, the poorly laid out text boxes are nonetheless
         shown.
+    kwargs : dict
+        Any kwargs to be passed to bokeh.plotting.figure().
 
     Returns
     -------
