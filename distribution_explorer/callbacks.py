@@ -45,8 +45,10 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     // Compute CDF
     var cumsum = 0.0;
+    var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
-        cumsum += probFun(x_p[i], arg1, arg2, arg3);
+        summand = probFun(x_p[i], arg1, arg2, arg3);
+        if !isNaN(summand) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -138,8 +140,10 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     // Compute CDF
     var cumsum = 0.0;
+    var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
-        cumsum += probFun(x_p[i], arg1, arg2, arg3);
+        summand = probFun(x_p[i], arg1, arg2, arg3);
+        if !isNaN(summand) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -516,8 +520,10 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     // Compute CDF
     var cumsum = 0.0;
+    var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
-        cumsum += probFun(x_p[i], arg1, arg2, arg3);
+        summand = probFun(x_p[i], arg1, arg2, arg3);
+        if !isNaN(summand) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -613,8 +619,10 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     // Compute CDF
     var cumsum = 0.0;
+    var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
-        cumsum += probFun(x_p[i], arg1, arg2, arg3);
+        summand = probFun(x_p[i], arg1, arg2, arg3);
+        if !isNaN(summand) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -706,8 +714,10 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     // Compute CDF
     var cumsum = 0.0;
+    var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
-        cumsum += probFun(x_p[i], arg1, arg2, arg3);
+        summand = probFun(x_p[i], arg1, arg2, arg3);
+        if !isNaN(summand) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -806,8 +816,10 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     // Compute CDF
     var cumsum = 0.0;
+    var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
-        cumsum += probFun(x_p[i], arg1, arg2, arg3);
+        summand = probFun(x_p[i], arg1, arg2, arg3);
+        if !isNaN(summand) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -1172,8 +1184,10 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     // Compute CDF
     var cumsum = 0.0;
+    var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
-        cumsum += probFun(x_p[i], arg1, arg2, arg3);
+        summand = probFun(x_p[i], arg1, arg2, arg3);
+        if !isNaN(summand) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -1565,8 +1579,10 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     // Compute CDF
     var cumsum = 0.0;
+    var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
-        cumsum += probFun(x_p[i], arg1, arg2, arg3);
+        summand = probFun(x_p[i], arg1, arg2, arg3);
+        if !isNaN(summand) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -1871,15 +1887,16 @@ function lnfactorial(n) {
 
 function probFun(y, mu, phi, {}) {
     if (y < 0) return NaN;
+    if (mu == 0 | phi == 0) return NaN;
 
-    var alpha = phi;
-    var beta = phi/mu;
+    var logMuPhi = Math.log(mu + phi);
 
-    return Math.exp(lngamma(y + alpha)
-                    - lngamma(alpha)
+    return Math.exp(lngamma(y + phi)
+                    - lngamma(phi)
                     - lnfactorial(y)
-                    + alpha * Math.log(beta / (1 + beta))
-                    - y * Math.log(1 + beta));
+                    + phi * (Math.log(phi) - logMuPhi)
+                    + y * (Math.log(mu) - logMuPhi);
+
 }
 
 // Extract data from sources
@@ -1961,8 +1978,10 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     // Compute CDF
     var cumsum = 0.0;
+    var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
-        cumsum += probFun(x_p[i], arg1, arg2, arg3);
+        summand = probFun(x_p[i], arg1, arg2, arg3);
+        if !isNaN(summand) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);

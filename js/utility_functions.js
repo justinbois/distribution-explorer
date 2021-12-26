@@ -35,8 +35,10 @@ function update_y_p(probFun, x_p, arg1, arg2, arg3) {
 function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     // Compute CDF
     var cumsum = 0.0;
+    var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
-        cumsum += probFun(x_p[i], arg1, arg2, arg3);
+        summand = probFun(x_p[i], arg1, arg2, arg3);
+        if !isNaN(summand) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);

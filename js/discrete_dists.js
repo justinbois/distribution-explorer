@@ -85,15 +85,16 @@ function negative_binomial_prob(y, alpha, beta, {}) {
 
 function negative_binomial_mu_phi_prob(y, mu, phi, {}) {
     if (y < 0) return NaN;
+    if (mu == 0 | phi == 0) return NaN;
 
-    var alpha = phi;
-    var beta = phi/mu;
+    var logMuPhi = Math.log(mu + phi);
 
-    return Math.exp(lngamma(y + alpha)
-                    - lngamma(alpha)
+    return Math.exp(lngamma(y + phi)
+                    - lngamma(phi)
                     - lnfactorial(y)
-                    + alpha * Math.log(beta / (1 + beta))
-                    - y * Math.log(1 + beta));
+                    + phi * (Math.log(phi) - logMuPhi)
+                    + y * (Math.log(mu) - logMuPhi);
+
 }
 
 
