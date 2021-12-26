@@ -25,7 +25,7 @@ function discrete_cdf(cumsum, y_p) {
 
     y_c.push(cumsum, cumsum);
     for (var i = 0; i < y_p.length; i++) {
-        cumsum += y_p[i];
+        if (!isNaN(y_p[i])) cumsum += y_p[i];
         y_c.push(cumsum, cumsum);
     }
 
@@ -48,7 +48,7 @@ function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
         summand = probFun(x_p[i], arg1, arg2, arg3);
-        if !isNaN(summand) cumsum += summand;
+        if (!isNaN(summand)) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -120,7 +120,7 @@ function discrete_cdf(cumsum, y_p) {
 
     y_c.push(cumsum, cumsum);
     for (var i = 0; i < y_p.length; i++) {
-        cumsum += y_p[i];
+        if (!isNaN(y_p[i])) cumsum += y_p[i];
         y_c.push(cumsum, cumsum);
     }
 
@@ -143,7 +143,7 @@ function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
         summand = probFun(x_p[i], arg1, arg2, arg3);
-        if !isNaN(summand) cumsum += summand;
+        if (!isNaN(summand)) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -500,7 +500,7 @@ function discrete_cdf(cumsum, y_p) {
 
     y_c.push(cumsum, cumsum);
     for (var i = 0; i < y_p.length; i++) {
-        cumsum += y_p[i];
+        if (!isNaN(y_p[i])) cumsum += y_p[i];
         y_c.push(cumsum, cumsum);
     }
 
@@ -523,7 +523,7 @@ function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
         summand = probFun(x_p[i], arg1, arg2, arg3);
-        if !isNaN(summand) cumsum += summand;
+        if (!isNaN(summand)) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -599,7 +599,7 @@ function discrete_cdf(cumsum, y_p) {
 
     y_c.push(cumsum, cumsum);
     for (var i = 0; i < y_p.length; i++) {
-        cumsum += y_p[i];
+        if (!isNaN(y_p[i])) cumsum += y_p[i];
         y_c.push(cumsum, cumsum);
     }
 
@@ -622,7 +622,7 @@ function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
         summand = probFun(x_p[i], arg1, arg2, arg3);
-        if !isNaN(summand) cumsum += summand;
+        if (!isNaN(summand)) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -694,7 +694,7 @@ function discrete_cdf(cumsum, y_p) {
 
     y_c.push(cumsum, cumsum);
     for (var i = 0; i < y_p.length; i++) {
-        cumsum += y_p[i];
+        if (!isNaN(y_p[i])) cumsum += y_p[i];
         y_c.push(cumsum, cumsum);
     }
 
@@ -717,7 +717,7 @@ function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
         summand = probFun(x_p[i], arg1, arg2, arg3);
-        if !isNaN(summand) cumsum += summand;
+        if (!isNaN(summand)) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -796,7 +796,7 @@ function discrete_cdf(cumsum, y_p) {
 
     y_c.push(cumsum, cumsum);
     for (var i = 0; i < y_p.length; i++) {
-        cumsum += y_p[i];
+        if (!isNaN(y_p[i])) cumsum += y_p[i];
         y_c.push(cumsum, cumsum);
     }
 
@@ -819,7 +819,7 @@ function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
         summand = probFun(x_p[i], arg1, arg2, arg3);
-        if !isNaN(summand) cumsum += summand;
+        if (!isNaN(summand)) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -1164,7 +1164,7 @@ function discrete_cdf(cumsum, y_p) {
 
     y_c.push(cumsum, cumsum);
     for (var i = 0; i < y_p.length; i++) {
-        cumsum += y_p[i];
+        if (!isNaN(y_p[i])) cumsum += y_p[i];
         y_c.push(cumsum, cumsum);
     }
 
@@ -1187,7 +1187,7 @@ function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
         summand = probFun(x_p[i], arg1, arg2, arg3);
-        if !isNaN(summand) cumsum += summand;
+        if (!isNaN(summand)) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -1559,7 +1559,7 @@ function discrete_cdf(cumsum, y_p) {
 
     y_c.push(cumsum, cumsum);
     for (var i = 0; i < y_p.length; i++) {
-        cumsum += y_p[i];
+        if (!isNaN(y_p[i])) cumsum += y_p[i];
         y_c.push(cumsum, cumsum);
     }
 
@@ -1582,7 +1582,7 @@ function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
         summand = probFun(x_p[i], arg1, arg2, arg3);
-        if !isNaN(summand) cumsum += summand;
+        if (!isNaN(summand)) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
@@ -1958,7 +1958,7 @@ function discrete_cdf(cumsum, y_p) {
 
     y_c.push(cumsum, cumsum);
     for (var i = 0; i < y_p.length; i++) {
-        cumsum += y_p[i];
+        if (!isNaN(y_p[i])) cumsum += y_p[i];
         y_c.push(cumsum, cumsum);
     }
 
@@ -1981,7 +1981,7 @@ function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
     var summand = 0.0;
     for (var i = 0; i < x_p[0]; i++) {
         summand = probFun(x_p[i], arg1, arg2, arg3);
-        if !isNaN(summand) cumsum += summand;
+        if (!isNaN(summand)) cumsum += summand;
     }
 
     y_c = discrete_cdf(cumsum, y_p);
