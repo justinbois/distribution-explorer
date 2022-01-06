@@ -976,6 +976,11 @@ def explore(
     p_p.x_range.range_padding = 0
     p_c.x_range.range_padding = 0
 
+    # For a Beta distribution, we want to force zero for PDF axis
+    # To give appropriate scale
+    if dist == "beta":
+        p_p.y_range.start = 0.0
+
     callback = bokeh.models.CustomJS(
         args=dict(
             source_p=source_p,
