@@ -1895,7 +1895,7 @@ function probFun(y, mu, phi, {}) {
                     - lngamma(phi)
                     - lnfactorial(y)
                     + phi * (Math.log(phi) - logMuPhi)
-                    + y * (Math.log(mu) - logMuPhi);
+                    + y * (Math.log(mu) - logMuPhi));
 
 }
 
