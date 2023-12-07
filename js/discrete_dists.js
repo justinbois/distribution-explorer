@@ -98,6 +98,18 @@ function negative_binomial_mu_phi_prob(y, mu, phi, {}) {
 }
 
 
+function negative_binomial_r_b_prob(y, r, b, {}) {
+    if (y < 0) return NaN;
+
+    return Math.exp(lngamma(y + r)
+                    - lngamma(r)
+                    - lnfactorial(y)
+                    + r * Math.log(1 / (1 + b))
+                    - y * Math.log(1 + 1 / b));
+
+}
+
+
 function poisson_prob(n, lam, {}, {}) {
     if (n < 0) return NaN;
 

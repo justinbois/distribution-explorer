@@ -138,7 +138,7 @@ function lnbeta(x, y) {
 
 function betacf(x, a, b) {
     // From Andreas Madsen's mathfn, Copyright (c) 2013 Andreas Madsen
-    // Computes incomplete beta function as a continues fraction
+    // Computes incomplete beta function as a continued fraction
     var fpmin = 1e-30,
         m = 1,
         m2, aa, c, d, del, h, qab, qam, qap;

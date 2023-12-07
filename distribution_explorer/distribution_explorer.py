@@ -18,6 +18,7 @@ discrete_dists = [
     "hypergeometric",
     "negative_binomial",
     "negative_binomial_mu_phi",
+    "negative_binomial_r_b",
     "poisson",
 ]
 
@@ -116,6 +117,11 @@ def _funs(dist):
             lambda x, mu, phi: st.nbinom.pmf(x, mu, phi / mu),
             lambda x, mu, phi: st.nbinom.cdf(x, mu, phi / mu),
         )
+    elif dist == "negative_binomial_r_b":
+        return (
+            lambda x, r, b: st.nbinom.pmf(x, r, 1 / (1 + b)),
+            lambda x, r, b: st.nbinom.cdf(x, r, 1 / (1 + b)),
+        )
     elif dist == "poisson":
         return st.poisson.pmf, st.poisson.cdf
     elif dist == "beta":
@@ -153,7 +159,7 @@ def _funs(dist):
     elif dist == "pareto":
         return (
             lambda x, y_min, alpha: st.pareto.pdf(x, alpha, scale=y_min),
-            lambda x, y_min, alpha: st.pareto.cdf(x, alpha, scale=y_min)
+            lambda x, y_min, alpha: st.pareto.cdf(x, alpha, scale=y_min),
         )
     elif dist == "student_t":
         return st.t.pdf, st.t.cdf
@@ -172,6 +178,9 @@ def _funs(dist):
 
 
 def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
+    # DEBUG: This is a holder until all dists have quantile setter params
+    quantile_setter_params = {}
+
     if dist == "bernoulli":
         params = [
             dict(
@@ -381,6 +390,33 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
                 step=0.01,
                 is_int=False,
                 min_value=0,
+                max_value="Infinity",
+            ),
+        ]
+        x_min = 0
+        x_max = 50
+        x_axis_label = "y"
+        title = "Negative Binomial"
+    elif dist == "negative_binomial_r_b":
+        params = [
+            dict(
+                name="r",
+                start=0,
+                end=20,
+                value=5,
+                step=0.01,
+                is_int=False,
+                min_value=0,
+                max_value="Infinity",
+            ),
+            dict(
+                name="b",
+                start=0.01,
+                end=5,
+                value=1,
+                step=0.01,
+                is_int=False,
+                min_value=0.01,
                 max_value="Infinity",
             ),
         ]
@@ -802,13 +838,70 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
     return params, x_min, x_max, x_axis_label, title
 
 
+def _compute_quantile_setter_params(dist, params, ptiles=None):
+    """Compute quantile setter params for a given distribution with a
+    params list of dicts.
+
+    Parameters
+    ----------
+    dist : str
+        Name of distribution
+    params : list of dicts
+        A list of parameter specifications. Each entry in the list gives
+        specifications for a parameter of the distribution stored as a
+        dictionary. Each dictionary must have the following keys.
+            name : str, name of the parameter
+            start : float, starting point of slider for parameter (the
+                smallest allowed value of the parameter)
+            end : float, ending point of slider for parameter (the
+                largest allowed value of the parameter)
+            value : float, the value of the parameter that the slider
+                takes initially. Must be between start and end.
+            step : float, the step size for the slider
+    ptiles : list of floats between 0 and 1
+        Percentiles for quantile setter. If none, default values for
+        each distribution are used accounting for 95% range.
+
+    Returns
+    -------
+    output : dict
+        Dictionary with entries x1, p1, x2, p2 referring to the values
+        and percentiles.
+    """
+    # Default: No quantile setter
+    x1, p1, x2, p2 = 0.0, -1.0, 0.0, -1.0
+
+    if dist == "beta":
+        if ptiles is None:
+            ptiles = [0.025, 0.975]
+
+        p1, p2 = ptiles
+        x1, x2 = st.beta.ppf(ptiles, params[0]["value"], params[1]["value"])
+    elif dist == "exponential":
+        if ptiles is None:
+            ptiles = [0.95]
+
+        p1 = ptiles[0]
+        x1 = -np.log(1.0 - p1) / params[0]["value"]
+        x2 = 0.0
+        p2 = -1.0
+    elif dist == "uniform":
+        if ptiles is None:
+            ptiles = [0.025, 0.975]
+
+        p1, p2 = ptiles
+        x1 = (1 - p1) * params[0]["value"] + p1 * params[1]["value"]
+        x2 = (1 - p2) * params[0]["value"] + p2 * params[1]["value"]
+
+    return dict(x1=x1, p1=p1, x2=x2, p2=p2)
+
+
 def explore(
     dist=None,
     params=None,
     x_min=None,
     x_max=None,
     n=400,
-    slider_range_textbox=False,
     **kwargs,
 ):
     """
@@ -839,14 +932,6 @@ def explore(
         Number of points to use in making plots of PDF and CDF for
         continuous distributions. This should be large enough to give
         smooth plots.
-    slider_range_textbox: bool, default False
-        If Bokeh is version number is 1.1.0 or above, text boxes used
-        for setting the ranges on parameter values are provided. In
-        earlier versions of Bokeh, a bug prevented proper layouts of the
-        widgets (see https://github.com/bokeh/bokeh/issues/6427). If
-        `slider_range_textbox` is True and the Bokeh version is less
-        than 1.1.0, the poorly laid out text boxes are nonetheless
-        shown.
     kwargs : dict
         Any kwargs to be passed to bokeh.plotting.figure().
 
@@ -872,10 +957,10 @@ def explore(
         dist = "normal"
 
     # Parse figure kwargs
-    if "frame_height" not in kwargs and "plot_height" not in kwargs:
+    if "frame_height" not in kwargs and "height" not in kwargs:
         kwargs["frame_height"] = 175
 
-    if "frame_width" not in kwargs and "plot_width" not in kwargs:
+    if "frame_width" not in kwargs and "width" not in kwargs:
         kwargs["frame_width"] = 300
 
     x_axis_label = kwargs.pop("x_axis_label", None)
@@ -894,6 +979,7 @@ def explore(
     params, x_min, x_max, x_axis_label, title = _load_params(
         dist, params, x_min, x_max, x_axis_label, title
     )
+    quantile_setter_params = _compute_quantile_setter_params(dist, params)
 
     for i, param in enumerate(params):
         if "is_int" not in param:
@@ -976,9 +1062,9 @@ def explore(
     p_p.x_range.range_padding = 0
     p_c.x_range.range_padding = 0
 
-    # For a Beta distribution, we want to force zero for PDF axis
+    # For a Beta or uniform distribution, we want to force zero for PDF axis
     # To give appropriate scale
-    if dist == "beta":
+    if dist in ("beta", "uniform"):
         p_p.y_range.start = 0.0
 
     callback = bokeh.models.CustomJS(
@@ -1001,9 +1087,146 @@ def explore(
             value=param["value"],
             step=param["step"],
             title=param["name"],
+            width=200,
+            format=bokeh.models.CustomJSTickFormatter(
+                code="return tick.toPrecision(4)"
+            ),
         )
         for param in params
     ]
+
+    # Text boxes for setting slider ranges
+    starts = [
+        bokeh.models.TextInput(value=str(param["start"]), width=70) for param in params
+    ]
+    ends = [
+        bokeh.models.TextInput(value=str(param["end"]), width=70) for param in params
+    ]
+
+    # Quantile setter text boxes
+    x1_box = bokeh.models.TextInput(
+        value=str("{0:.4f}".format(quantile_setter_params["x1"])),
+        width=70,
+        disabled=True,
+    )
+    x2_box = bokeh.models.TextInput(
+        value=str("{0:.4f}".format(quantile_setter_params["x2"])),
+        width=70,
+        disabled=True,
+    )
+    p1_box = bokeh.models.TextInput(
+        value=str("{0:.4f}".format(quantile_setter_params["p1"])),
+        width=70,
+        disabled=True,
+    )
+    p2_box = bokeh.models.TextInput(
+        value=str("{0:.4f}".format(quantile_setter_params["p2"])),
+        width=70,
+        disabled=True,
+    )
+
+    # Always have these around, even if invisible, and pass them into
+    # JS callbacks for sliders.
+    callback.args["x1_box"] = x1_box
+    callback.args["p1_box"] = p1_box
+    callback.args["x2_box"] = x2_box
+    callback.args["p2_box"] = p2_box
+
+    # Make quantile setters active and visible as necessary
+    if quantile_setter_params["p1"] >= 0:
+        # Adjust parameters vs quantile setter mode
+        vary_parameters_button = bokeh.models.RadioButtonGroup(
+            labels=["Parameter setter mode"],
+            active=0,
+        )
+        quantile_setter_button = bokeh.models.RadioButtonGroup(
+            labels=["Quantile setter mode"],
+            active=None,
+        )
+        quantile_setter_div = bokeh.models.Div(text="")
+        buttons = bokeh.layouts.row(
+            bokeh.models.Spacer(width=50),
+            vary_parameters_button,
+            bokeh.models.Spacer(width=250),
+            quantile_setter_button,
+            bokeh.models.Spacer(width=10),
+            bokeh.layouts.column(
+                bokeh.models.Spacer(height=5),
+                quantile_setter_div,
+            ),
+        )
+
+        # Layout of quantile setter text boxes
+        if quantile_setter_params["p2"] < 0:
+            quantile_setter_text_boxes = bokeh.layouts.layout(
+                [
+                    [
+                        bokeh.models.Spacer(width=50),
+                        bokeh.models.Div(text=f"<p><b>{x_axis_label}: </b></p>"),
+                        x1_box,
+                        bokeh.models.Spacer(width=20),
+                        bokeh.models.Div(text="<p><b>quantile: </b></p>"),
+                        p1_box,
+                    ]
+                ]
+            )
+        else:
+            quantile_setter_text_boxes = bokeh.layouts.layout(
+                [
+                    [
+                        bokeh.models.Spacer(width=30),
+                        bokeh.models.Div(text=f"<p><b>lower {x_axis_label}: </b></p>"),
+                        x1_box,
+                        bokeh.models.Spacer(width=20),
+                        bokeh.models.Div(text="<p><b>lower quantile: </b></p>"),
+                        p1_box,
+                    ],
+                    [
+                        bokeh.models.Spacer(width=28),
+                        bokeh.models.Div(text=f"<p><b>upper {x_axis_label}: </b></p>"),
+                        x2_box,
+                        bokeh.models.Spacer(width=18),
+                        bokeh.models.Div(text="<p><b>upper quantile: </b></p>"),
+                        p2_box,
+                    ],
+                ]
+            )
+
+        # Assign callbacks to mode buttons and quantile setter text boxes
+        args = dict(
+            vary_parameters_button=vary_parameters_button,
+            quantile_setter_button=quantile_setter_button,
+            quantile_setter_div=quantile_setter_div,
+            x1_box=x1_box,
+            p1_box=p1_box,
+            x2_box=x2_box,
+            p2_box=p2_box,
+            sliders=sliders,
+            starts=starts,
+            ends=ends,
+        )
+        vary_parameters_button.js_on_change(
+            "active",
+            bokeh.models.CustomJS(
+                args=args,
+                code=callbacks.vary_parameters,
+            ),
+        )
+        quantile_setter_button.js_on_change(
+            "active",
+            bokeh.models.CustomJS(
+                args=args,
+                code=callbacks.quantile_setter,
+            ),
+        )
+        quantile_setter_callback = bokeh.models.CustomJS(
+            args=args,
+            code=callbacks.quantile_setter_callbacks[dist],
+        )
+        x1_box.js_on_change("value", quantile_setter_callback)
+        p1_box.js_on_change("value", quantile_setter_callback)
+        x2_box.js_on_change("value", quantile_setter_callback)
+        p2_box.js_on_change("value", quantile_setter_callback)
 
     # Assign callbacks to sliders
     for i, slider in enumerate(sliders):
@@ -1015,42 +1238,30 @@ def explore(
 
     # Execute callback upon changing x-axis values
     if dist not in ["bernoulli", "categorical"]:
-        p_p.x_range.js_on_change('start', callback)
-        p_p.x_range.js_on_change('end', callback)
+        p_p.x_range.js_on_change("start", callback)
+        p_p.x_range.js_on_change("end", callback)
 
-    # Text boxes for setting slider ranges (Bokeh 1.1.0 and above)
-    if bokeh.__version__ > "1.1.0" or slider_range_textbox:
-        starts = [
-            bokeh.models.TextInput(value=str(param["start"]), width=70)
-            for param in params
-        ]
-        ends = [
-            bokeh.models.TextInput(value=str(param["end"]), width=70)
-            for param in params
-        ]
-
-        # Callbacks for setting slider ranges
-        for param, slider, start, end in zip(params, sliders, starts, ends):
-            args = dict(
-                min_value=param["min_value"],
-                max_value=param["max_value"],
-                slider=slider,
-            )
-            if param["is_int"]:
-                cb_start = bokeh.models.CustomJS(args=args, code=callbacks.start_int)
-                cb_end = bokeh.models.CustomJS(args=args, code=callbacks.end_int)
-            else:
-                cb_start = bokeh.models.CustomJS(args=args, code=callbacks.start)
-                cb_end = bokeh.models.CustomJS(args=args, code=callbacks.end)
-
-            start.js_on_change("value", cb_start)
-            end.js_on_change("value", cb_end)
-
-        widgets = bokeh.layouts.layout(
-            [[start, slider, end] for start, slider, end in zip(starts, sliders, ends)]
+    # Callbacks for setting slider ranges
+    for param, slider, start, end in zip(params, sliders, starts, ends):
+        args = dict(
+            min_value=param["min_value"],
+            max_value=param["max_value"],
+            slider=slider,
         )
-    else:
-        widgets = bokeh.layouts.widgetbox(sliders)
+        if param["is_int"]:
+            cb_start = bokeh.models.CustomJS(args=args, code=callbacks.start_int)
+            cb_end = bokeh.models.CustomJS(args=args, code=callbacks.end_int)
+        else:
+            cb_start = bokeh.models.CustomJS(args=args, code=callbacks.start)
+            cb_end = bokeh.models.CustomJS(args=args, code=callbacks.end)
+
+        start.js_on_change("value", cb_start)
+        end.js_on_change("value", cb_end)
+
+    # Layout of sliders with text boxes
+    widgets = bokeh.layouts.layout(
+        [[start, slider, end] for start, slider, end in zip(starts, sliders, ends)]
+    )
 
     # Layout plots next to each other
     grid = bokeh.layouts.gridplot(
@@ -1060,4 +1271,22 @@ def explore(
     )
 
     # Put the layout together and return
-    return bokeh.layouts.column(widgets, bokeh.layouts.Spacer(height=10), grid)
+    if quantile_setter_params["p1"] >= 0:
+        return_layout = bokeh.layouts.column(
+            buttons,
+            bokeh.layouts.Spacer(height=10),
+            bokeh.layouts.row(
+                widgets, bokeh.models.Spacer(width=20), quantile_setter_text_boxes
+            ),
+            bokeh.layouts.Spacer(height=10),
+            grid,
+        )
+    else:
+        return_layout = bokeh.layouts.column(
+            bokeh.layouts.Spacer(height=10),
+            widgets,
+            bokeh.layouts.Spacer(height=10),
+            grid,
+        )
+
+    return return_layout

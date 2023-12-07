@@ -37,5 +37,9 @@ source_p.data['y_p'] = update_y_p(probFun,
 source_c.data['y_c'] = update_y_c_continuous(cdfFun, 
     x_c, arg1.value, arg2.value, arg3.value);
 
+// Update quantile setter
+p1_box.value = cdfFun(Number(x1_box.value), arg1.value, arg2.value, arg3.value).toPrecision(4);
+p2_box.value = cdfFun(Number(x2_box.value), arg1.value, arg2.value, arg3.value).toPrecision(4);
+
 source_p.change.emit();
 source_c.change.emit();
