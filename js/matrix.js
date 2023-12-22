@@ -81,7 +81,7 @@ function min(input, options = {}) {
 }
 // END stuff that is in ml-array-min
 
-// Stuff that is in ml-array-min
+// Stuff that is in ml-array-max
 function max(input, options = {}) {
   if (!isAnyArray.isAnyArray(input)) {
     throw new TypeError('input must be an array');

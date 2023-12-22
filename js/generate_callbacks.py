@@ -55,11 +55,11 @@ extra_funs = {
     "exponential": [],
     "gamma": ["lngamma", "gammainc_u", "gammainc_l"],
     "halfcauchy": [],
-    "halfnormal": ["erf"],
+    "halfnormal": ["erf", "erfinv"],
     "halfstudent_t": ["lngamma", "log1p", "regularized_incomplete_beta", "betacf"],
     "inverse_gamma": ["lngamma", "gammainc_u", "gammainc_l"],
-    "lognormal": ["erf"],
-    "normal": ["erf"],
+    "lognormal": ["erf", "erfinv"],
+    "normal": ["erf", "erfinv"],
     "pareto": [],
     "student_t": ["lngamma", "log1p", "regularized_incomplete_beta", "betacf"],
     "uniform": [],
@@ -88,23 +88,27 @@ def read_js_codes():
     discrete_callback = read_js_code("discrete_callback_code.js")
     continuous_callback = read_js_code("continuous_callback_code.js")
     quantile_setter_callback = read_js_code("quantile_setter_callback_code.js")
+    reset_button_callback = read_js_code("reset_button_callback_code.js")
     utils = read_js_code("utility_functions.js")
     discrete_code = read_js_code("discrete_dists.js")
     continuous_code = read_js_code("continuous_dists.js")
     quantile_setter_code = read_js_code("quantile_setter_dists.js")
     matrix_code = read_js_code("matrix.js")
     root_finding_code = read_js_code("root_finding.js")
+    reset_button_code = read_js_code("reset_button_dists.js")
 
     return (
         discrete_callback,
         continuous_callback,
         quantile_setter_callback,
+        reset_button_callback,
         utils,
         discrete_code,
         continuous_code,
         quantile_setter_code,
         matrix_code,
         root_finding_code,
+        reset_button_code,
     )
 
 
@@ -133,12 +137,19 @@ slider.end = Math.min(Math.floor(max_value), Math.floor(Number(cb_obj.value)));
         )
 
 
-def write_parameter_mode_callbacks():
+def write_quantile_setter_switch_callbacks():
     with open("../distribution_explorer/callbacks.py", "a") as f:
         f.write(
-            '''vary_parameters = """
-    if (cb_obj.active === 0) {
-        quantile_setter_button.active = null;
+            '''quantile_setter_switch = """
+    if (cb_obj.active) {
+        for (let i = 0; i < sliders.length; i++) {
+            sliders[i].disabled = true;
+        }
+        x1_box.disabled = false;
+        p1_box.disabled = false;
+        x2_box.disabled = false;
+        p2_box.disabled = false;
+    } else {
         for (let i = 0; i < sliders.length; i++) {
             sliders[i].disabled = false;
         }
@@ -147,19 +158,6 @@ def write_parameter_mode_callbacks():
         p1_box.disabled = true;
         x2_box.disabled = true;
         p2_box.disabled = true;
-    }
-"""
-
-quantile_setter = """
-    if (cb_obj.active === 0) {
-        vary_parameters_button.active = null;
-        for (let i = 0; i < sliders.length; i++) {
-            sliders[i].disabled = true;
-        }
-        x1_box.disabled = false;
-        p1_box.disabled = false;
-        x2_box.disabled = false;
-        p2_box.disabled = false;
     }
 """
 
@@ -233,9 +231,7 @@ def write_continuous(dist):
 def write_dict():
     with open("../distribution_explorer/callbacks.py", "a") as f:
         f.write("callbacks = {\n")
-        for dist in discrete_dists:
-            f.write('\t"' + dist + '": ' + dist + "_callback,\n")
-        for dist in continuous_dists:
+        for dist in discrete_dists + continuous_dists:
             f.write('\t"' + dist + '": ' + dist + "_callback,\n")
         f.write("}\n\n")
 
@@ -281,10 +277,38 @@ def write_quantile_setter(dist):
         f.write('\n"""\n\n')
 
 
+def write_reset_button(dist):
+    with open("../distribution_explorer/callbacks.py", "a") as f:
+        f.write(f'{dist}_reset_button_callback = """')
+
+        write_continuous_utils(f)
+
+        for extra in extra_funs[dist]:
+            f.write(extract_fun(utils, extra))
+            f.write("\n\n")
+
+        f.write(root_finding_code)
+
+        f.write(extract_fun(continuous_code, f"{dist}_cdf"))
+
+        f.write(extract_fun(reset_button_code, f"{dist}_reset", 'reset_button_callback'))
+        f.write(reset_button_callback)
+        f.write('\n"""\n\n')
+
+
+def write_reset_button_dict():
+    with open("../distribution_explorer/callbacks.py", "a") as f:
+        f.write("reset_button_callbacks = {\n")
+        for dist in discrete_dists + continuous_dists:
+            f.write('\t"' + dist + '": ' + dist + "_reset_button_callback,\n")
+
+        f.write("}\n\n")
+
+
 def write_quantile_setter_dict():
     with open("../distribution_explorer/callbacks.py", "a") as f:
         f.write("quantile_setter_callbacks = {\n")
-        for dist in continuous_dists:
+        for dist in discrete_dists + continuous_dists:
             f.write('\t"' + dist + '": ' + dist + "_quantile_setter_callback,\n")
 
         f.write("}\n\n")
@@ -295,17 +319,19 @@ if __name__ == "__main__":
         discrete_callback,
         continuous_callback,
         quantile_setter_callback,
+        reset_button_callback,
         utils,
         discrete_code,
         continuous_code,
         quantile_setter_code,
         matrix_code,
         root_finding_code,
+        reset_button_code,
     ) = read_js_codes()
 
     write_warning()
     write_slider_start_stop_callbacks()
-    write_parameter_mode_callbacks()
+    write_quantile_setter_switch_callbacks()
 
     for dist in discrete_dists:
         write_discrete(dist)
@@ -313,8 +339,12 @@ if __name__ == "__main__":
     for dist in continuous_dists:
         write_continuous(dist)
 
-    for dist in continuous_dists:
+    for dist in discrete_dists + continuous_dists:
         write_quantile_setter(dist)
+
+    for dist in discrete_dists + continuous_dists:
+        write_reset_button(dist)
 
     write_dict()
     write_quantile_setter_dict()
+    write_reset_button_dict()

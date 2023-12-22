@@ -1,10 +1,26 @@
-function isone(x) {
-    return Math.abs(1.0 - x) <= 1.0e-8;
+function isclose(x, y, rtol = 1.0e-7, atol = 1.0e-8) {
+    return Math.abs(x - y) <= (atol + rtol * Math.abs(y));
+}
+
+function isone(x, rtol = 1.0e-5, atol = 1.0e-8) {
+    return isclose(x, 1.0, rtol, atol);
 }
 
 
-function iszero(x) {
-    return Math.abs(x) <= 1.0e-8;
+function iszero(x, eps = 1.0e-8) {
+    return Math.abs(x) <= eps;
+}
+
+/**
+ * Set the y-ranges for PDF and CDF plots.
+ */
+function set_y_ranges(p_p, p_c, source_p) {
+    p_c.y_range.start = -0.04;
+    p_c.y_range.end = 1.04;        
+
+    let pdfMax = source_p.data['y_p'];
+    p_p.y_range.start = -pdfMax * 0.04;
+    p_p.y_range.end = 1.04 * pdfMax;
 }
 
 
@@ -74,6 +90,17 @@ function arange(start, stop) {
 }
 
 
+function logit(x) {
+    if (x == 0) return -Infinity;
+
+    if (x == 1) return Infinity;
+
+    if (x < 0 || x > 1) return NaN;
+
+    return Math.log(x / (1.0 - x));
+}
+
+
 function log1p(x) {
     // log of 1 + x, 
     // adapted from Andreas Madsen's mathfn, Copyright (c) 2013 Andreas Madsen
@@ -118,6 +145,88 @@ function erf(x) {
     if (x < 0) return -result;
     return result;
 }
+
+
+/**
+ * Inverse error function.
+ * 
+ * Uses algorithm PPND7 from Wichura, 1987: https://doi.org/10.2307/2347330
+ * 
+ * Accurate to about seven figures.
+ * 
+ */
+function erfinv(x) {
+  // Convert x to a percentile of standard normal
+  let p = (x + 1.0) / 2.0;
+
+  // Check input
+  if (p == 0.0) return -Infinity;
+  if (p == 1.0) return Infinity;
+  if (p > 1.0 || p < 0.0) return undefined;
+
+  let split1 = 0.425;
+  let split2 = 5.0;
+  let const1 = 0.180625;
+  let const2 = 1.6;
+
+  // Coefficients for p close to 1/2
+  let a0 = 3.3871327179;
+  let a1 = 5.0434271938e1;
+  let a2 = 1.5929113202e2;
+  let a3 = 5.9109374720e1;
+  let b1 = 1.7895169469e1;
+  let b2 = 7.8757757664e1;
+  let b3 = 6.7187563600e1;
+
+  // Coefficients for not close to 1/2 nor 0 or 1
+  let c0 = 1.4234372777;
+  let c1 = 2.7568153900;
+  let c2 = 1.3067284816;
+  let c3 = 1.7023821103e-1;
+  let d1 = 7.3700164250e-1;
+  let d2 = 1.2021132975e-1;
+
+  // Coefficients for near 0 or 1
+  let e0 = 6.6579051150;
+  let e1 = 3.0812263860;
+  let e2 = 4.2868294337e-1;
+  let e3 = 1.7337203997e-2;
+  let f1 = 2.4197894225e-1;
+  let f2 = 1.2258202635e-2;
+
+  let r;
+  let res;
+  let q = p - 0.5;
+
+  if (Math.abs(q) <= split1) {
+    r = const1 - q * q;
+    res = q * (((a3 * r + a2) * r + a1) * r + a0) /
+              (((b3 * r + b2) * r + b1) * r + 1.0);
+  } else {
+    r = q < 0 ? p : 1.0 - p;
+
+    r = Math.sqrt(-Math.log(r));
+
+    if (r <= split2) {
+      r -= const2;
+      res = (((c3 * r + c2) * r + c1) * r + c0) /
+             ((d2 * r + d1) * r + 1.0);
+    } else {
+      r -= split2;
+      res = (((e3 * r + e2) * r + e1) * r + e0) /
+             ((f2 * r + f1) * r + 1.0);
+    }
+  
+    if (q < 0) {
+      res = -res;
+    }
+  }
+
+  // To convert to erfinv, need to divide by sqrt of 2.
+  return 0.7071067811865475 * res;
+
+}
+
 
 
 function lnchoice(n, k) {
@@ -575,3 +684,22 @@ function lnfactorial(n) {
     return lnfact[n];
   }
 }
+
+
+exports.isone = isone;
+exports.iszero = iszero;
+exports.isclose = isclose;
+exports.lnfactorial = lnfactorial;
+exports.linspace = linspace;
+exports.arange = arange;
+exports.log1p = log1p;
+exports.erf = erf;
+exports.erfinv = erfinv;
+exports.lnchoice = lnchoice;
+exports.lnbeta = lnbeta;
+exports.betacf = betacf;
+exports.regularized_incomplete_beta = regularized_incomplete_beta;
+exports.incomplete_beta = incomplete_beta;
+exports.lngamma = lngamma;
+exports.gammainc_u = gammainc_u;
+exports.gammainc_l = gammainc_l;

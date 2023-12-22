@@ -3,9 +3,10 @@ import warnings
 import numpy as np
 import scipy.stats as st
 
-import bokeh.plotting
-import bokeh.models
+import bokeh.events
 import bokeh.layouts
+import bokeh.models
+import bokeh.plotting
 
 from . import callbacks
 
@@ -1008,11 +1009,14 @@ def explore(
         **kwargs,
     )
 
+    # Explicitly set x-range
+    p_p.x_range = bokeh.models.Range1d(x_min, x_max)
+
     # Link the axes
     p_c.x_range = p_p.x_range
 
     # Make sure CDF y_range is zero to one
-    p_c.y_range = bokeh.models.Range1d(-0.05, 1.05)
+    p_c.y_range = bokeh.models.Range1d(-0.04, 1.04)
 
     # Make array of parameter values
     param_vals = np.array([param["value"] for param in params])
@@ -1059,8 +1063,10 @@ def explore(
     else:
         p_p.line("x", "y_p", source=source_p, line_width=2)
 
-    p_p.x_range.range_padding = 0
-    p_c.x_range.range_padding = 0
+    # In previous versions, range padding was set to 0 for convenience.
+    # Now, ranges are explicitly set.
+    # p_p.x_range.range_padding = 0
+    # p_c.x_range.range_padding = 0
 
     # For a Beta or uniform distribution, we want to force zero for PDF axis
     # To give appropriate scale
@@ -1135,26 +1141,17 @@ def explore(
     # Make quantile setters active and visible as necessary
     if quantile_setter_params["p1"] >= 0:
         # Adjust parameters vs quantile setter mode
-        vary_parameters_button = bokeh.models.RadioButtonGroup(
-            labels=["Parameter setter mode"],
-            active=0,
+        quantile_setter_switch = bokeh.models.Switch(active=False)
+
+        # Layout with label for switch
+        quantile_setter_switch_with_label = bokeh.layouts.row(
+            bokeh.models.Div(text="<p><b>Quantile setter mode</b></p>"),
+            bokeh.models.Spacer(width=2),
+            quantile_setter_switch,
         )
-        quantile_setter_button = bokeh.models.RadioButtonGroup(
-            labels=["Quantile setter mode"],
-            active=None,
-        )
+
+        # Div giving results of quantile setting
         quantile_setter_div = bokeh.models.Div(text="")
-        buttons = bokeh.layouts.row(
-            bokeh.models.Spacer(width=50),
-            vary_parameters_button,
-            bokeh.models.Spacer(width=250),
-            quantile_setter_button,
-            bokeh.models.Spacer(width=10),
-            bokeh.layouts.column(
-                bokeh.models.Spacer(height=5),
-                quantile_setter_div,
-            ),
-        )
 
         # Layout of quantile setter text boxes
         if quantile_setter_params["p2"] < 0:
@@ -1192,11 +1189,10 @@ def explore(
                 ]
             )
 
-        # Assign callbacks to mode buttons and quantile setter text boxes
+        # Assign callbacks to quantile setter switch and  text boxes
         args = dict(
-            vary_parameters_button=vary_parameters_button,
-            quantile_setter_button=quantile_setter_button,
             quantile_setter_div=quantile_setter_div,
+            quantile_setter_switch=quantile_setter_switch,
             x1_box=x1_box,
             p1_box=p1_box,
             x2_box=x2_box,
@@ -1205,18 +1201,12 @@ def explore(
             starts=starts,
             ends=ends,
         )
-        vary_parameters_button.js_on_change(
+
+        quantile_setter_switch.js_on_change(
             "active",
             bokeh.models.CustomJS(
                 args=args,
-                code=callbacks.vary_parameters,
-            ),
-        )
-        quantile_setter_button.js_on_change(
-            "active",
-            bokeh.models.CustomJS(
-                args=args,
-                code=callbacks.quantile_setter,
+                code=callbacks.quantile_setter_switch,
             ),
         )
         quantile_setter_callback = bokeh.models.CustomJS(
@@ -1235,6 +1225,21 @@ def explore(
     if len(sliders) < 3:
         for i in range(len(sliders), 3):
             callback.args["arg" + str(i + 1)] = sliders[0]
+
+    # Assign callbacks to reset button
+    if dist in ["beta", "gamma", "uniform", "normal", "cauchy", "student_t", "pareto"]:
+        # Custom callback for pressing reset button in toolbar
+        reset_callback = bokeh.models.CustomJS(
+            args=dict(p_p=p_p, p_c=p_c, source_p=source_p), code=callbacks.reset_button_callbacks[dist]
+        )
+
+        for i, slider in enumerate(sliders):
+            reset_callback.args["arg" + str(i + 1)] = slider
+        if len(sliders) < 3:
+            for i in range(len(sliders), 3):
+                reset_callback.args["arg" + str(i + 1)] = sliders[0]
+
+        p_c.js_on_event(bokeh.events.Reset, reset_callback)
 
     # Execute callback upon changing x-axis values
     if dist not in ["bernoulli", "categorical"]:
@@ -1273,7 +1278,9 @@ def explore(
     # Put the layout together and return
     if quantile_setter_params["p1"] >= 0:
         return_layout = bokeh.layouts.column(
-            buttons,
+            bokeh.layouts.row(
+                bokeh.models.Spacer(width=420), quantile_setter_switch_with_label
+            ),
             bokeh.layouts.Spacer(height=10),
             bokeh.layouts.row(
                 widgets, bokeh.models.Spacer(width=20), quantile_setter_text_boxes

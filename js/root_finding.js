@@ -380,7 +380,7 @@ function brentSolve(f, lower, upper, args=[], tol=1e-8, maxIter=1000) {
 }
 
 
-module.exports = { f, quantileRootFindFunBeta, beta_cdf, quantilePickBeta, jacCentralDiff, findRootTrustRegion, computeRho, checkTol, doglegStep }
+module.exports = { jacCentralDiff, findRootTrustRegion, computeRho, checkTol, doglegStep, brentSolve, secantSolve, newtonSolve };
 
 
 
