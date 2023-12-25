@@ -40,12 +40,74 @@ continuous_dists = [
     "weibull",
 ]
 
+_needs_trust_region = [
+    "beta",
+    "cauchy",
+    "gamma",
+    "halfcauchy",
+    "halfnormal",
+    "halfstudent_t",
+    "inverse_gamma",
+    "lognormal",
+    "normal",
+    "student_t",
+    "weibull",
+]
 
-def _callback_code():
-    with open(
-        "/Users/bois/Dropbox/git/distribution-explorer/distribution_explorer/callback_code.js"
-    ) as f:
-        return f.read()
+_needs_brents_method = [
+    "beta",
+    "cauchy",
+    "gamma",
+    "halfcauchy",
+    "halfnormal",
+    "halfstudent_t",
+    "inverse_gamma",
+    "lognormal",
+    "normal",
+    "student_t",
+    "weibull",
+]
+
+
+_needed_util_funs = {
+    "bernoulli": [],
+    "beta_binomial": ["lnbeta", "lnchoice", "lnfactorial", "lngamma"],
+    "binomial": ["lnchoice", "lnfactorial"],
+    "categorical": [],
+    "discrete_uniform": [],
+    "geometric": [],
+    "hypergeometric": ["lnchoice", "lnfactorial"],
+    "negative_binomial": ["lngamma", "lnfactorial"],
+    "negative_binomial_mu_phi": ["lngamma", "lnfactorial"],
+    "negative_binomial_r_b": ["lngamma", "lnfactorial"],
+    "poisson": ["lnfactorial"],
+    "beta": [
+        "lngamma",
+        "lnbeta",
+        "regularized_incomplete_beta",
+        "betacf",
+        "log1p",
+        "isone",
+        "iszero",
+    ],
+    "cauchy": [],
+    "exponential": [],
+    "gamma": ["lngamma", "gammainc_u", "gammainc_l"],
+    "halfcauchy": [],
+    "halfnormal": ["erf", "erfinv"],
+    "halfstudent_t": ["lngamma", "log1p", "regularized_incomplete_beta", "betacf"],
+    "inverse_gamma": ["lngamma", "gammainc_u", "gammainc_l"],
+    "lognormal": ["erf", "erfinv"],
+    "normal": ["erf", "erfinv"],
+    "pareto": [],
+    "student_t": ["lngamma", "log1p", "regularized_incomplete_beta", "betacf"],
+    "uniform": [],
+    "weibull": [],
+}
+
+
+def _to_camel_case(input_str):
+    return "".join(word.capitalize() for word in input_str.split("_"))
 
 
 def _categorical_pmf(x, theta_1, theta_2, theta_3):
@@ -865,36 +927,37 @@ def _compute_quantile_setter_params(dist, params, ptiles=None):
 
     Returns
     -------
-    output : dict
-        Dictionary with entries x1, p1, x2, p2 referring to the values
-        and percentiles.
+    x : list
+        List of x-values to populate quantile setter boxes
+    p : list
+        List of p-values to populate quantile setter boxes
     """
     # Default: No quantile setter
-    x1, p1, x2, p2 = 0.0, -1.0, 0.0, -1.0
+    x = []
+    p = []
 
     if dist == "beta":
-        if ptiles is None:
-            ptiles = [0.025, 0.975]
-
-        p1, p2 = ptiles
-        x1, x2 = st.beta.ppf(ptiles, params[0]["value"], params[1]["value"])
+        p = [0.025, 0.975] if ptiles is None else list(ptiles)
+        x = list(st.beta.ppf(p, params[0]["value"], params[1]["value"]))
+    elif dist == "cauchy":
+        p = [0.025, 0.975] if ptiles is None else list(ptiles)
+        x = list(st.cauchy.ppf(p, params[0]["value"], params[1]["value"]))
     elif dist == "exponential":
-        if ptiles is None:
-            ptiles = [0.95]
-
-        p1 = ptiles[0]
-        x1 = -np.log(1.0 - p1) / params[0]["value"]
-        x2 = 0.0
-        p2 = -1.0
+        p = [0.95] if ptiles is None else list(ptiles)
+        x = [-np.log(1.0 - p[0]) / params[0]["value"]]
+    elif dist == "gamma":
+        p = [0.025, 0.975] if ptiles is None else list(ptiles)
+        x = list(
+            st.gamma.ppf(p, params[0]["value"], loc=0, scale=1.0 / params[1]["value"])
+        )
     elif dist == "uniform":
-        if ptiles is None:
-            ptiles = [0.025, 0.975]
+        p = [0.025, 0.975] if ptiles is None else list(ptiles)
+        x = [
+            (1 - p[0]) * params[0]["value"] + p[0] * params[1]["value"],
+            (1 - p[1]) * params[0]["value"] + p[1] * params[1]["value"],
+        ]
 
-        p1, p2 = ptiles
-        x1 = (1 - p1) * params[0]["value"] + p1 * params[1]["value"]
-        x2 = (1 - p2) * params[0]["value"] + p2 * params[1]["value"]
-
-    return dict(x1=x1, p1=p1, x2=x2, p2=p2)
+    return x, p
 
 
 def explore(
@@ -957,6 +1020,9 @@ def explore(
     if dist == "gaussian":
         dist = "normal"
 
+    # Name of JS class containing dist
+    distjs = f"{_to_camel_case(dist)}Distribution"
+
     # Parse figure kwargs
     if "frame_height" not in kwargs and "height" not in kwargs:
         kwargs["frame_height"] = 175
@@ -980,7 +1046,7 @@ def explore(
     params, x_min, x_max, x_axis_label, title = _load_params(
         dist, params, x_min, x_max, x_axis_label, title
     )
-    quantile_setter_params = _compute_quantile_setter_params(dist, params)
+    x_quantset, p_quantset = _compute_quantile_setter_params(dist, params)
 
     for i, param in enumerate(params):
         if "is_int" not in param:
@@ -1073,18 +1139,6 @@ def explore(
     if dist in ("beta", "uniform"):
         p_p.y_range.start = 0.0
 
-    callback = bokeh.models.CustomJS(
-        args=dict(
-            source_p=source_p,
-            source_c=source_c,
-            dist=dist,
-            discrete=discrete,
-            xrange=p_p.x_range,
-            n=n,
-        ),
-        code=callbacks.callbacks[dist],
-    )
-
     # Sliders
     sliders = [
         bokeh.models.Slider(
@@ -1102,170 +1156,248 @@ def explore(
     ]
 
     # Text boxes for setting slider ranges
-    starts = [
+    start_boxes = [
         bokeh.models.TextInput(value=str(param["start"]), width=70) for param in params
     ]
-    ends = [
+    end_boxes = [
         bokeh.models.TextInput(value=str(param["end"]), width=70) for param in params
     ]
 
     # Quantile setter text boxes
-    x1_box = bokeh.models.TextInput(
-        value=str("{0:.4f}".format(quantile_setter_params["x1"])),
-        width=70,
-        disabled=True,
-    )
-    x2_box = bokeh.models.TextInput(
-        value=str("{0:.4f}".format(quantile_setter_params["x2"])),
-        width=70,
-        disabled=True,
-    )
-    p1_box = bokeh.models.TextInput(
-        value=str("{0:.4f}".format(quantile_setter_params["p1"])),
-        width=70,
-        disabled=True,
-    )
-    p2_box = bokeh.models.TextInput(
-        value=str("{0:.4f}".format(quantile_setter_params["p2"])),
-        width=70,
-        disabled=True,
-    )
-
-    # Always have these around, even if invisible, and pass them into
-    # JS callbacks for sliders.
-    callback.args["x1_box"] = x1_box
-    callback.args["p1_box"] = p1_box
-    callback.args["x2_box"] = x2_box
-    callback.args["p2_box"] = p2_box
-
-    # Make quantile setters active and visible as necessary
-    if quantile_setter_params["p1"] >= 0:
-        # Adjust parameters vs quantile setter mode
-        quantile_setter_switch = bokeh.models.Switch(active=False)
-
-        # Layout with label for switch
-        quantile_setter_switch_with_label = bokeh.layouts.row(
-            bokeh.models.Div(text="<p><b>Quantile setter mode</b></p>"),
-            bokeh.models.Spacer(width=2),
-            quantile_setter_switch,
+    x_boxes = [
+        bokeh.models.TextInput(
+            value=str("{0:.4f}".format(x_val)), width=70, disabled=True
         )
+        for x_val in x_quantset
+    ]
+    p_boxes = [
+        bokeh.models.TextInput(
+            value=str("{0:.4f}".format(p_val)), width=70, disabled=True
+        )
+        for p_val in p_quantset
+    ]
 
-        # Div giving results of quantile setting
-        quantile_setter_div = bokeh.models.Div(text="")
+    # Div giving results of quantile setting
+    quantile_setter_div = bokeh.models.Div(text="")
 
-        # Layout of quantile setter text boxes
-        if quantile_setter_params["p2"] < 0:
-            quantile_setter_text_boxes = bokeh.layouts.layout(
-                [
-                    [
-                        bokeh.models.Spacer(width=50),
-                        bokeh.models.Div(text=f"<p><b>{x_axis_label}: </b></p>"),
-                        x1_box,
-                        bokeh.models.Spacer(width=20),
-                        bokeh.models.Div(text="<p><b>quantile: </b></p>"),
-                        p1_box,
-                    ]
-                ]
-            )
-        else:
-            quantile_setter_text_boxes = bokeh.layouts.layout(
-                [
-                    [
-                        bokeh.models.Spacer(width=30),
-                        bokeh.models.Div(text=f"<p><b>lower {x_axis_label}: </b></p>"),
-                        x1_box,
-                        bokeh.models.Spacer(width=20),
-                        bokeh.models.Div(text="<p><b>lower quantile: </b></p>"),
-                        p1_box,
-                    ],
-                    [
-                        bokeh.models.Spacer(width=28),
-                        bokeh.models.Div(text=f"<p><b>upper {x_axis_label}: </b></p>"),
-                        x2_box,
-                        bokeh.models.Spacer(width=18),
-                        bokeh.models.Div(text="<p><b>upper quantile: </b></p>"),
-                        p2_box,
-                    ],
-                ]
-            )
+    # Adjust parameters vs quantile setter mode
+    quantile_setter_switch = bokeh.models.Switch(active=False)
 
-        # Assign callbacks to quantile setter switch and  text boxes
-        args = dict(
-            quantile_setter_div=quantile_setter_div,
-            quantile_setter_switch=quantile_setter_switch,
-            x1_box=x1_box,
-            p1_box=p1_box,
-            x2_box=x2_box,
-            p2_box=p2_box,
+    # Build callback preamble, all necessary functions for calculations
+    callback_preamble = ""
+    if discrete:
+        for f in callbacks._dependencies["discrete_callback"]:
+            callback_preamble += callbacks._callbacks[f]
+    else:
+        for f in callbacks._dependencies["continuous_callback"]:
+            callback_preamble += callbacks._callbacks[f]
+
+    for f in callbacks._dependencies[distjs]:
+        callback_preamble += callbacks._callbacks[f]
+
+    callback_preamble += callbacks._callbacks[distjs] + "\n\n"
+    callback_preamble += f"\nvar dist = new {distjs}();\n\n"
+
+    # Build code for callbacks that require the distribution
+    if discrete:
+        callback_code = callback_preamble + callbacks._callbacks["discrete_callback"]
+    else:
+        callback_code = callback_preamble + callbacks._callbacks["continuous_callback"]
+
+    quantile_setter_callback_code = (
+        callback_preamble
+        + callbacks._callbacks["paramsFromBoxes"]
+        + callbacks._callbacks["paramsFromSliders"]
+        + callbacks._callbacks["checkQuantileInput"]
+        + callbacks._callbacks["quantile_setter_callback"]
+        + callbacks._callbacks["setYRanges"]
+    )
+
+    reset_button_callback_code = (
+        callback_preamble
+        + callbacks._callbacks["setYRanges"]
+        + callbacks._callbacks["reset_button_callback"]
+    )
+
+    # Build the callback CustomJS objects from the code with args.
+    # When building callbacks, lists have to be rebuilt to avoid circular references in
+    # serialization.
+    callback = bokeh.models.CustomJS(
+        args=dict(
+            source_p=source_p,
+            source_c=source_c,
+            dist=dist,
+            discrete=discrete,
+            xRange=p_p.x_range,
+            n=n,
+            sliders=[slider for slider in sliders],
+            xBoxes=[x_box for x_box in x_boxes],
+            pBoxes=[p_box for p_box in p_boxes],
+            quantileSetterSwitch=quantile_setter_switch,
+        ),
+        code=callback_code,
+    )
+
+    quantile_setter_switch_callback = bokeh.models.CustomJS(
+        args=dict(
+            quantileSetterDiv=quantile_setter_div,
+            sliders=[slider for slider in sliders],
+            xBoxes=[x_box for x_box in x_boxes],
+            pBoxes=[p_box for p_box in p_boxes],
+        ),
+        code=callbacks._callbacks["quantile_setter_switch_callback"],
+    )
+
+    quantile_setter_callback = bokeh.models.CustomJS(
+        args=dict(
+            p_p=p_p,
+            p_c=p_c,
+            source_p=source_p,
+            quantileSetterSwitch=quantile_setter_switch,
+            quantileSetterDiv=quantile_setter_div,
+            sliders=[slider for slider in sliders],
+            xBoxes=[x_box for x_box in x_boxes],
+            pBoxes=[p_box for p_box in p_boxes],
+            startBoxes=[start_box for start_box in start_boxes],
+            endBoxes=[end_box for end_box in end_boxes],
+        ),
+        code=quantile_setter_callback_code,
+    )
+
+    reset_button_callback = bokeh.models.CustomJS(
+        args=dict(
             sliders=sliders,
-            starts=starts,
-            ends=ends,
-        )
+            p_p=p_p,
+            p_c=p_c,
+            source_p=source_p,
+        ),
+        code=reset_button_callback_code,
+    )
 
-        quantile_setter_switch.js_on_change(
-            "active",
-            bokeh.models.CustomJS(
-                args=args,
-                code=callbacks.quantile_setter_switch,
-            ),
-        )
-        quantile_setter_callback = bokeh.models.CustomJS(
-            args=args,
-            code=callbacks.quantile_setter_callbacks[dist],
-        )
-        x1_box.js_on_change("value", quantile_setter_callback)
-        p1_box.js_on_change("value", quantile_setter_callback)
-        x2_box.js_on_change("value", quantile_setter_callback)
-        p2_box.js_on_change("value", quantile_setter_callback)
-
-    # Assign callbacks to sliders
-    for i, slider in enumerate(sliders):
-        callback.args["arg" + str(i + 1)] = slider
-        slider.js_on_change("value", callback)
-    if len(sliders) < 3:
-        for i in range(len(sliders), 3):
-            callback.args["arg" + str(i + 1)] = sliders[0]
-
-    # Assign callbacks to reset button
-    if dist in ["beta", "gamma", "uniform", "normal", "cauchy", "student_t", "pareto"]:
-        # Custom callback for pressing reset button in toolbar
-        reset_callback = bokeh.models.CustomJS(
-            args=dict(p_p=p_p, p_c=p_c, source_p=source_p), code=callbacks.reset_button_callbacks[dist]
-        )
-
-        for i, slider in enumerate(sliders):
-            reset_callback.args["arg" + str(i + 1)] = slider
-        if len(sliders) < 3:
-            for i in range(len(sliders), 3):
-                reset_callback.args["arg" + str(i + 1)] = sliders[0]
-
-        p_c.js_on_event(bokeh.events.Reset, reset_callback)
-
-    # Execute callback upon changing x-axis values
-    if dist not in ["bernoulli", "categorical"]:
-        p_p.x_range.js_on_change("start", callback)
-        p_p.x_range.js_on_change("end", callback)
-
-    # Callbacks for setting slider ranges
-    for param, slider, start, end in zip(params, sliders, starts, ends):
+    # Create and link callbacks for setting slider ranges
+    for param, slider, start, end in zip(params, sliders, start_boxes, end_boxes):
         args = dict(
-            min_value=param["min_value"],
-            max_value=param["max_value"],
+            minValue=param["min_value"],
+            maxValue=param["max_value"],
             slider=slider,
         )
         if param["is_int"]:
-            cb_start = bokeh.models.CustomJS(args=args, code=callbacks.start_int)
-            cb_end = bokeh.models.CustomJS(args=args, code=callbacks.end_int)
+            cb_start = bokeh.models.CustomJS(
+                args=args, code=callbacks._callbacks["int_slider_start_callback"]
+            )
+            cb_end = bokeh.models.CustomJS(
+                args=args, code=callbacks._callbacks["int_slider_end_callback"]
+            )
         else:
-            cb_start = bokeh.models.CustomJS(args=args, code=callbacks.start)
-            cb_end = bokeh.models.CustomJS(args=args, code=callbacks.end)
+            cb_start = bokeh.models.CustomJS(
+                args=args, code=callbacks._callbacks["slider_start_callback"]
+            )
+            cb_end = bokeh.models.CustomJS(
+                args=args, code=callbacks._callbacks["slider_end_callback"]
+            )
 
         start.js_on_change("value", cb_start)
         end.js_on_change("value", cb_end)
 
+    # Link callback to sliders
+    for slider in sliders:
+        slider.js_on_change("value", callback)
+
+    # Link callback upon changing x-axis ranges
+    if dist not in ["bernoulli", "categorical"]:
+        p_p.x_range.js_on_change("start", callback)
+        p_p.x_range.js_on_change("end", callback)
+
+    # Link quantile setters switch
+    quantile_setter_switch.js_on_change("active", quantile_setter_switch_callback)
+
+    # Link quantile setter boxes
+    for x_box in x_boxes:
+        x_box.js_on_change("value", quantile_setter_callback)
+    for p_box in p_boxes:
+        p_box.js_on_change("value", quantile_setter_callback)
+
+    # Link callbacks to reset button
+    p_c.js_on_event(bokeh.events.Reset, reset_button_callback)
+
+    # Layout with label for switch
+    quantile_setter_switch_with_label = bokeh.layouts.row(
+        bokeh.models.Div(text="<p><b>Quantile setter mode</b></p>"),
+        bokeh.models.Spacer(width=2),
+        quantile_setter_switch,
+    )
+
+    # Layout of quantile setter text boxes
+    if len(x_boxes) == 1:
+        quantile_setter_text_boxes = bokeh.layouts.layout(
+            [
+                [
+                    bokeh.models.Spacer(width=50),
+                    bokeh.models.Div(text="<p><b>quantile: </b></p>"),
+                    p_boxes[0],
+                    bokeh.models.Spacer(width=20),
+                    bokeh.models.Div(text=f"<p><b>{x_axis_label}: </b></p>"),
+                    x_boxes[0],
+                ]
+            ]
+        )
+    elif len(x_boxes) == 2:
+        quantile_setter_text_boxes = bokeh.layouts.layout(
+            [
+                [
+                    bokeh.models.Spacer(width=20),
+                    bokeh.models.Div(text="<p><b>lower quantile: </b></p>"),
+                    p_boxes[0],
+                    bokeh.models.Spacer(width=30),
+                    bokeh.models.Div(text=f"<p><b>lower {x_axis_label}: </b></p>"),
+                    x_boxes[0],
+                ],
+                [
+                    bokeh.models.Spacer(width=28),
+                    bokeh.models.Div(text="<p><b>upper quantile: </b></p>"),
+                    p_boxes[1],
+                    bokeh.models.Spacer(width=18),
+                    bokeh.models.Div(text=f"<p><b>upper {x_axis_label}: </b></p>"),
+                    x_boxes[1],
+                ],
+            ]
+        )
+    elif len(x_boxes) == 3:
+        quantile_setter_text_boxes = bokeh.layouts.layout(
+            [
+                [
+                    bokeh.models.Spacer(width=30),
+                    bokeh.models.Div(text="<p><b>lower quantile: </b></p>"),
+                    p_boxes[0],
+                    bokeh.models.Spacer(width=20),
+                    bokeh.models.Div(text=f"<p><b>lower {x_axis_label}: </b></p>"),
+                    x_boxes[0],
+                ],
+                [
+                    bokeh.models.Spacer(width=25),
+                    bokeh.models.Div(text="<p><b>middle quantile: </b></p>"),
+                    p_boxes[1],
+                    bokeh.models.Spacer(width=15),
+                    bokeh.models.Div(text=f"<p><b>middle {x_axis_label}: </b></p>"),
+                    x_boxes[1],
+                ],
+                [
+                    bokeh.models.Spacer(width=28),
+                    bokeh.models.Div(text="<p><b>upper quantile: </b></p>"),
+                    p_boxes[2],
+                    bokeh.models.Spacer(width=18),
+                    bokeh.models.Div(text=f"<p><b>upper {x_axis_label}: </b></p>"),
+                    x_boxes[2],
+                ],
+            ]
+        )
+
     # Layout of sliders with text boxes
     widgets = bokeh.layouts.layout(
-        [[start, slider, end] for start, slider, end in zip(starts, sliders, ends)]
+        [
+            [start, slider, end]
+            for start, slider, end in zip(start_boxes, sliders, end_boxes)
+        ]
     )
 
     # Layout plots next to each other
@@ -1276,10 +1408,13 @@ def explore(
     )
 
     # Put the layout together and return
-    if quantile_setter_params["p1"] >= 0:
+    if len(x_boxes) > 0:
         return_layout = bokeh.layouts.column(
             bokeh.layouts.row(
-                bokeh.models.Spacer(width=420), quantile_setter_switch_with_label
+                bokeh.models.Spacer(width=420),
+                quantile_setter_switch_with_label,
+                bokeh.models.Spacer(width=10),
+                quantile_setter_div,
             ),
             bokeh.layouts.Spacer(height=10),
             bokeh.layouts.row(
