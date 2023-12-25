@@ -1,46 +1,9 @@
-const { Matrix, CholeskyDecomposition } = require('./matrix.js');
+// const { Matrix, CholeskyDecomposition } = require('../legacy/matrix.js');
 
-const { 
-	jacCentralDiff, 
-	findRootTrustRegion, 
-	computeRho, 
-	checkTol, 
-	doglegStep,
-	secantSolve,
-	newtonSolve,
-	brentSolve
-} = require('./root_finding.js');
+const { jacCentralDiff, findRootTrustRegion, computeRho, checkTol, doglegStep,secantSolve,newtonSolve,brentSolve } = require('./root_finding.js');
 
-const { 
-	isclose,
-	isone, 
-	iszero, 
-	linspace,
-	lnfactorial, 
-	log1p, 
-	erf, 
-	erfinv, 
-	lnchoice, 
-	lnbeta, 
-	betacf, 
-	regularized_incomplete_beta, 
-	incomplete_beta, 
-	lngamma, 
-	gammainc_u, 
-	gammainc_l 
-} = require('./utility_functions.js');
+const { isclose, isone, iszero, linspace, logspace, meshgrid, arange, logit, log1p, erf, erfinv, lnchoice, lnbeta, betacf, regularizedIncompleteBeta, incompleteBeta, lngamma, gammaincU, gammaincL, lnfactorial } = require('./utils_math.js');
 
-const { 
-	BernoulliDistribution,
-	BetaBinomialDistribution,
-	BinomialDistribution,
-	CategoricalDistribution,
-	DiscreteUniformDistribution,
-	GeometricDistribution,
-	HypergeometricDistribution,
-	NegativeBinomialDistribution,
-	PoissonDistribution,
-	BetaDistribution,
-	CauchyDistribution,
-	ExponentialDistribution
-} = require('./prob_dists.js');
+const { transpose, mvMult, svMult, smMult, svAdd, mmMult, vectorAdd, elementwiseVectorDivide, elementwiseVectorMult, svMultAdd, absVector, dot, norm, quadForm, shallowCopyMatrix, deepCopy, zeros, lowerTriSolve, upperTriSolve, modifiedCholesky, modifiedCholeskySolve, solvePosDef, LUPDecompose, LUPSolve, solve } = require('./utils_linalg.js');
+
+const { UnivariateDistribution,  DiscreteUnivariateDistribution, ContinuousUnivariateDistribution, BernoulliDistribution, BetaBinomialDistribution, BinomialDistribution, CategoricalDistribution, DiscreteUniformDistribution, GeometricDistribution, HypergeometricDistribution, NegativeBinomialDistribution, PoissonDistribution, BetaDistribution, CauchyDistribution, ExponentialDistribution, GammaDistribution } = require('./prob_dists.js');

@@ -1,11 +1,11 @@
 class UnivariateDistribution {
   constructor() {}
 
-  xMin() {
+  xMin(params) {
     // Minimal value of support; defined for each distribution.
   }
 
-  xMax() {
+  xMax(params) {
     // Maxima value of support; defined for each distribution.
   }
 
@@ -17,7 +17,7 @@ class UnivariateDistribution {
     // Empty; defined for each distribution.
   }
 
-  quantileSetter(x, p, xMin = -Infinity, xMax = Infinity) {
+  quantileSet(x, p, xMin = -Infinity, xMax = Infinity) {
     // Empty; defined for each distribution.    
   }
 
@@ -25,38 +25,6 @@ class UnivariateDistribution {
     // Default x-range for reset button. Empty; defined for each distribution.
   }
 
-  checkResetp(p) {
-    // Check passed array for percentiles for reset button
-    if (!p instanceof Array || p.length != 2) {
-      throw new Error('`p` must be a 2-array.');
-    }
-    if (p[0] < 0 || p[0] > 1 || p[1] < 0 || p[1] > 1) {
-      throw new Error('`p` must be a 2-array with entries between zero and one.');
-    }
-    if (p[0] >= p[1]) {
-      throw new Error('`p[0] must be less than p[1].');
-    }
-
-    return true;
-  }
-
-  checkQuantileSetterInput(x, p, xMin = -Infinity, xMax = Infinity) {
-    let pOk = this.checkResetp(p);
-
-    if (x[0] >= x[1]) {
-      throw new Error('`x[0] must be less than x[1].')
-    }
-
-    if (x[0] < xMin) {
-      throw new Error('`x[0] must be greater than ' + xMin.toString() + '.');      
-    }
-
-    if (x[1] > xMax) {
-      throw new Error('`x[1] must be less than ' + xMax.toString() + '.');      
-    }
-
-    return true;
-  }
 
   cdf(x, params, xMin = 0) {
     params = this.scalarToArrayParams(params);
@@ -91,23 +59,22 @@ class UnivariateDistribution {
     }
   }
 
-  quantileSet(x, p, xMin = -Infinity, xMax = Infinity) {
-    this.checkQuantileSetterInput(x, p, xMin, xMax);
-    return this.quantileSetter(x, p, xMin, xMax);
-  }
-
   scalarOrArrayCompute(func, x, params) {
-    if (x instanceof Matrix) {
-      if (x.columns != 1) throw new Error('Must be a column vector.');
+    // For now, we will not allow Matrix objects here, since that leads to bloat
+    // required to have the matrix package in there.
+    // if (x instanceof Matrix) {
+    //   if (x.columns != 1) throw new Error('Must be a column vector.');
       
-      let xLen = x.rows;
-      let res = [];
-      for (let i = 0; i < xLen; i++) {
-        res.push(func(x.get(i, 0), params));
-      }
+    //   let xLen = x.rows;
+    //   let res = [];
+    //   for (let i = 0; i < xLen; i++) {
+    //     res.push(func(x.get(i, 0), params));
+    //   }
 
-      return res;
-    } else if (x instanceof Array) {
+    //   return res;
+    // } else 
+
+    if (x instanceof Array) {
       let xLen = x.length;
 
       let res = [];
@@ -168,17 +135,16 @@ class DiscreteUnivariateDistribution extends UnivariateDistribution {
 
     // Compute CDF by summing up to first value of x for which it is desired.
     let cumsum = 0.0;
-    let summand = 0.0;
+    let prob;
     for (let x = xMin; x < xStart; x++) {
-      summand = this.pmfSingleValue(x, params);
-      if (!isNaN(summand)) cumsum += summand;
+      prob = this.pmfSingleValue(x, params);
+      if (!isNaN(prob)) cumsum += prob;
     }
 
     // Now start building CDF.
     let yCDF = [];
-    yCDF.push(cumsum, cumsum);
-    for (let x = xStart; x <= xEnd; x++) {
-      let prob = this.pmfSingleValue(x, params);
+    for (let x = xStart; x < xEnd; x++) {
+      prob = this.pmfSingleValue(x, params);
       if (!isNaN(prob)) cumsum += prob;
       yCDF.push(cumsum, cumsum);
     }
@@ -244,6 +210,14 @@ class TemplateDiscreteUnivariateDistribution extends DiscreteUnivariateDistribut
     // Can have more specifications in the constructor.
   }
 
+  xMin(params) {
+    // Must be specified.    
+  }
+
+  xMax(params) {
+    // Must be specified.    
+  }
+
   pmfSingleValue(x, params) {
     // Must be specified.
   }
@@ -252,7 +226,7 @@ class TemplateDiscreteUnivariateDistribution extends DiscreteUnivariateDistribut
     // Must be specified.
   }
 
-  quantileSetter(x, p) {
+  quantileSet(x, p) {
     // Must be specified.
   }
 
@@ -268,7 +242,22 @@ class TemplateDiscreteUnivariateDistribution extends DiscreteUnivariateDistribut
 class TemplateContinuousUnivariateDistribution extends ContinuousUnivariateDistribution {
   constructor() {
     super();
+
+    // Name of independent variable (used in quantile setter)
+    this.varName = '';
+
+    // Name of parameters (may be used in quantile setter)
+    this.paramNames = [];
+
     // Can have more specifications in the constructor.
+  }
+
+  xMin(params) {
+    // Must be specified.    
+  }
+
+  xMax(params) {
+    // Must be specified.    
   }
 
   pdfSingleValue(x, params) {
@@ -287,7 +276,7 @@ class TemplateContinuousUnivariateDistribution extends ContinuousUnivariateDistr
     // Must be specified.
   }
 
-  quantileSetter(x, p) {
+  quantileSet(x, p) {
     // Must be specified.
   }
 
@@ -298,6 +287,14 @@ class TemplateContinuousUnivariateDistribution extends ContinuousUnivariateDistr
 class BernoulliDistribution extends DiscreteUnivariateDistribution {
   constructor() {
     super();
+  }
+
+  xMin(params) {
+    return 0;
+  }
+
+  xMax(params) {
+    return 1;
   }
 
   pmfSingleValue(x, params) {
@@ -326,6 +323,14 @@ class BetaBinomialDistribution extends DiscreteUnivariateDistribution {
     super();
   }
 
+  xMin(params) {
+    return 0;
+  }
+
+  xMax(params) {
+    return params[0];
+  }
+
   pmfSingleValue(n, params) {
     let [N, alpha, beta] = params.slice(0, 3);
 
@@ -352,6 +357,14 @@ class BetaBinomialDistribution extends DiscreteUnivariateDistribution {
 class BinomialDistribution extends DiscreteUnivariateDistribution {
   constructor() {
     super();
+  }
+
+  xMin(params) {
+    return 0;
+  }
+
+  xMax(params) {
+    return params[0];
   }
 
   pmfSingleValue(n, params) {
@@ -383,7 +396,11 @@ class BinomialDistribution extends DiscreteUnivariateDistribution {
   defaultXRange(params) {
     let [N, theta] = params.slice(0, 2);
 
-    return [-1, N + 1];
+    if (N < 50) {
+      return [-1, N + 1];
+    } else {
+      return this.ppf([0.001, 0.999], params);
+    }
   }
 }
 
@@ -391,6 +408,14 @@ class BinomialDistribution extends DiscreteUnivariateDistribution {
 class CategoricalDistribution extends DiscreteUnivariateDistribution {
   constructor() {
     super();
+  }
+
+  xMin(params) {
+    return 1;
+  }
+
+  xMax(params) {
+    return 4;
   }
 
   pmfSingleValue(cat, params) {
@@ -409,7 +434,7 @@ class CategoricalDistribution extends DiscreteUnivariateDistribution {
   }
 
   defaultXRange(params) {
-    return [-1, 5];
+    return [-0.2, 4.2];
   }
 
 }
@@ -418,6 +443,14 @@ class CategoricalDistribution extends DiscreteUnivariateDistribution {
 class DiscreteUniformDistribution extends DiscreteUnivariateDistribution {
   constructor() {
     super();
+  }
+
+  xMin(params) {
+    return params[0];
+  }
+
+  xMax(params) {
+    return params[1];
   }
 
   pmfSingleValue(n, params) {
@@ -446,6 +479,14 @@ class DiscreteUniformDistribution extends DiscreteUnivariateDistribution {
 class GeometricDistribution extends DiscreteUnivariateDistribution {
   constructor() {
     super();
+  }
+
+  xMin(params) {
+    return 0;
+  }
+
+  xMax(params) {
+    return Infinity;
   }
 
   pmfSingleValue(x, params) {
@@ -478,7 +519,7 @@ class GeometricDistribution extends DiscreteUnivariateDistribution {
   defaultXRange(params) {
     let theta = params[0];
 
-    return [-1, this.ppfSingleValue(0.95, params)];
+    return [-1, this.ppfSingleValue(0.999, params)];
   }
 
 }
@@ -488,6 +529,15 @@ class GeometricDistribution extends DiscreteUnivariateDistribution {
 class HypergeometricDistribution extends DiscreteUnivariateDistribution {
   constructor() {
     super();
+  }
+
+  xMin(params) {
+    let [N, a, b] = params.slice(0, 2);
+    return Math.max(0, N - b);
+  }
+
+  xMax(params) {
+    return Math.min(N, a);
   }
 
   pmfSingleValue(n, params) {
@@ -501,7 +551,7 @@ class HypergeometricDistribution extends DiscreteUnivariateDistribution {
   ppfSingleValue(p, params) {
     let [N, alpha, beta] = params.slice(0, 3);
 
-    return super.ppfSingleValue(p, params, Math.max(0, N - b), Math.min(N, a), Math.min(N, a));
+    return super.ppfSingleValue(p, params, this.xMin(params), this.xMax(params), this.xMax(params));
   }
 
   defaultXRange(params) {
@@ -521,6 +571,14 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
     } else {
       this.parametrization = parametrization;
     }
+  }
+
+  xMin(params) {
+    return 0;
+  }
+
+  xMax(params) {
+    return Infinity;
   }
 
   pmfSingleValue(y, params) {
@@ -573,6 +631,14 @@ class PoissonDistribution extends DiscreteUnivariateDistribution {
     super();
   }
 
+  xMin(params) {
+    return 0;
+  }
+
+  xMax(params) {
+    return Infinity;
+  }
+
   pmfSingleValue(n, params) {
     let lam = params[0];
 
@@ -596,6 +662,20 @@ class PoissonDistribution extends DiscreteUnivariateDistribution {
 class BetaDistribution extends ContinuousUnivariateDistribution {
   constructor() {
     super();
+
+    // Name of independent variable (used in quantile setter)
+    this.varName = 'θ';
+
+    // Name of parameters (may be used in quantile setter)
+    this.paramNames = ['α', 'β'];
+  }
+
+  xMin(params) {
+    return 0.0;
+  }
+
+  xMax(params) {
+    return 1.0;
   }
 
   pdfSingleValue(x, params) {
@@ -634,15 +714,13 @@ class BetaDistribution extends ContinuousUnivariateDistribution {
   cdfSingleValue(x, params) {
     let [alpha, beta] = params.slice(0, 2);
 
-    if (x < 0 || x > 1 || x == 0) return 0.0;
-    if (x == 1) return 1.0;
+    if (x <= 0) return 0.0;
+    if (x >= 1) return 1.0;
 
-    return regularized_incomplete_beta(x, alpha, beta);
+    return regularizedIncompleteBeta(x, alpha, beta);
   }
 
   ppfSingleValue(p, params) {
-    let [alpha, beta] = params.slice(0, 2);
-
     if (p == 0) return 0.0;
     if (p == 1) return 1.0;
 
@@ -652,25 +730,26 @@ class BetaDistribution extends ContinuousUnivariateDistribution {
     return brentSolve(rootFun, 0.0, 1.0, [params, p]);
   }
 
-  quantileSetter(x, p) {
+  quantileSet(x, p) {
     let [x1, x2] = x.slice(0, 2);
     let [p1, p2] = p.slice(0, 2);
 
-    const  quantileRootFindFunBeta = (params, x1, p1, x2, p2) => {
-      let alpha = Math.exp(params.get(0, 0));
-      let beta = Math.exp(params.get(1, 0));
+    // Root finding function using log parameters to enforce positivity
+    const quantileRootFindFunBeta = (params, x1, p1, x2, p2) => {
+      let alpha = Math.exp(params[0]);
+      let beta = Math.exp(params[1]);
 
       let r1 = this.cdfSingleValue(x1, [alpha, beta]) - p1;
       let r2 = this.cdfSingleValue(x2, [alpha, beta]) - p2;
 
-      return Matrix.columnVector([r1, r2]);
+      return [r1, r2];
     };
 
     let args = [x1, p1, x2, p2];
-    let guess = Matrix.columnVector([1.0, 1.0]);
+    let guess = [1.0, 1.0];
     let [logParams, optimSuccess] = findRootTrustRegion(quantileRootFindFunBeta, guess, args=args);
 
-    return [[Math.exp(logParams.get(0, 0)), Math.exp(logParams.get(1, 0))], optimSuccess];
+    return [[Math.exp(logParams[0]), Math.exp(logParams[1])], optimSuccess];
   }
 
   defaultXRange(params) {
@@ -683,6 +762,20 @@ class BetaDistribution extends ContinuousUnivariateDistribution {
 class CauchyDistribution extends ContinuousUnivariateDistribution {
   constructor() {
     super();
+
+    // Specify name of independent variable (used in quantile setter)
+    this.varName = 'y';
+
+    // Name of parameters (may be used in quantile setter)
+    this.paramNames = ['μ', 'σ'];
+  }
+
+  xMin(params) {
+    return -Infinity;
+  }
+
+  xMax(params) {
+    return Infinity;
   }
 
   pdfSingleValue(x, params) {
@@ -703,7 +796,7 @@ class CauchyDistribution extends ContinuousUnivariateDistribution {
     return mu + sigma * Math.tan(Math.PI * (p - 0.5));
   }
 
-  quantileSetter(x, p) {
+  quantileSet(x, p) {
     let [x1, x2] = x.slice(0, 2);
     let [p1, p2] = p.slice(0, 2);
 
@@ -718,8 +811,8 @@ class CauchyDistribution extends ContinuousUnivariateDistribution {
   }
 
   defaultXRange(params) {
-    // Because of pathologically heavy tails, only go to 5th and 95th percentile
-    return this.ppf([0.05, 0.95], params);
+    // Because of pathologically heavy tails, only go to 2.5th and 97.5th percentile
+    return this.ppf([0.025, 0.975], params);
   }
 
 }
@@ -727,6 +820,20 @@ class CauchyDistribution extends ContinuousUnivariateDistribution {
 class ExponentialDistribution extends ContinuousUnivariateDistribution {
   constructor() {
     super();
+
+    // Specify name of independent variable (used in quantile setter)
+    this.varName = 'y';
+
+    // Name of parameters (may be used in quantile setter)
+    this.paramNames = ['β'];
+  }
+
+  xMin(params) {
+    return 0.0;
+  }
+
+  xMax(params) {
+    return Infinity;
   }
 
   pdfSingleValue(x, params) {
@@ -754,7 +861,7 @@ class ExponentialDistribution extends ContinuousUnivariateDistribution {
     return -Math.log(1.0 - p) / beta;
   }
 
-  quantileSetter(x, p) {
+  quantileSet(x, p) {
     let x1 = x[0];
     let p1 = p[0];
 
@@ -767,20 +874,137 @@ class ExponentialDistribution extends ContinuousUnivariateDistribution {
 
 }
 
+class GammaDistribution extends ContinuousUnivariateDistribution {
+  constructor() {
+    super();
 
-exports.BernoulliDistribution = BernoulliDistribution;
-exports.BetaBinomialDistribution = BetaBinomialDistribution;
-exports.BinomialDistribution = BinomialDistribution;
-exports.CategoricalDistribution = CategoricalDistribution;
-exports.DiscreteUniformDistribution = DiscreteUniformDistribution;
-exports.GeometricDistribution = GeometricDistribution;
-exports.HypergeometricDistribution = HypergeometricDistribution;
-exports.NegativeBinomialDistribution = NegativeBinomialDistribution;
-exports.PoissonDistribution = PoissonDistribution;
+    // Name of independent variable (used in quantile setter)
+    this.varName = 'y';
 
-exports.BetaDistribution = BetaDistribution;
-exports.CauchyDistribution = CauchyDistribution;
-exports.ExponentialDistribution = ExponentialDistribution;
+    // Name of parameters (may be used in quantile setter)
+    this.paramNames = ['α', 'β'];
+  }
+
+  xMin(params) {
+    return 0.0;   
+  }
+
+  xMax(params) {
+    return Infinity;
+  }
+
+  pdfSingleValue(x, params) {
+    if (x < 0) return NaN;
+
+    let [alpha, beta] = params.slice(0, 2);
+
+    let ln_prob;
+    ln_prob = alpha * Math.log(beta * x) - Math.log(x) - beta * x - lngamma(alpha);
+
+    return Math.exp(ln_prob);
+  }
+
+  cdfSingleValue(x, params) {
+    if (x < 0) return 0.0;
+    if (x == Infinity) return 1.0;
+
+    let [alpha, beta] = params.slice(0, 2);
+
+    return gammaincL(beta * x, alpha, true);
+  }
+
+  ppfSingleValue(p, params) {
+    if (p == 0) return 0.0;
+    if (p == 1) return Infinity;
+
+    let rootFun = (xi, params, p) => {
+        let x = xi == 1.0 ? Infinity : xi / (1.0 - xi);
+
+        return p - this.cdfSingleValue(x, params);
+    }
+
+    let xiOpt = brentSolve(rootFun, 0.0, 1.0, [params, p]);
+
+    return xiOpt == 1.0 ? Infinity : xiOpt / (1.0 - xiOpt);
+
+  }
+
+  defaultXRange(params) {
+    let [x1, x2] = this.ppf([0.001, 0.999], params);
+
+    // If lower bound is within 10% of the range of bounds to zero, make it zero
+    if (x1 < (x2 - x1) / 10.0) x1 = 0.0;
+
+    return [x1, x2];
+  }
+
+  quantileSet(x, p) {
+    let [x1, x2] = x.slice(0, 2);
+    let [p1, p2] = p.slice(0, 2);
+
+    // Rescale according to larger percentile
+    let x1Rescaled = x1 / x2;
+    let x2Rescaled = 1.0;
+
+    // Root finding function using log parameters to enforce positivity
+    const quantileRootFindFunGamma = (params, x1, p1, x2, p2) => {
+      let alpha = Math.exp(params[0]);
+      let beta = Math.exp(params[1]);
+
+      let r1 = this.cdfSingleValue(x1, [alpha, beta]) - p1;
+      let r2 = this.cdfSingleValue(x2, [alpha, beta]) - p2;
+
+      return [r1, r2];
+    };
+
+    let args = [x1Rescaled, p1, x2Rescaled, p2];
+
+    // Another option is to grid up guesses to get good initial guess.
+    // // Grid up guesses
+    // let alphaGuesses = linspace(-14, 10, 100);
+    // let betaGuesses = linspace(-14, 10, 100);
+    // let [alphaGrid, betaGrid] = meshgrid(alphaGuesses, betaGuesses);
+
+    // // Evaluate function at each grid point and find smallest one
+    // let fNorm = Infinity;
+    // let newfNorm;
+    // let guess;
+    // for (let i = 0; i < alphaGrid.length; i++) {
+    //   for (let j = 0; j < alphaGrid[i].length; j++) {
+    //     newfNorm = norm(quantileRootFindFunGamma([alphaGrid[i][j], betaGrid[i][j]], x1, p1, x2, p2));
+    //     if (newfNorm < fNorm) {
+    //       fNorm = newfNorm;
+    //       guess = [alphaGrid[i][j], betaGrid[i][j]];
+    //     }
+    //   }
+    // }
+
+    let guess = [0.75, 0.75];
+
+    let [logParams, optimSuccess] = findRootTrustRegion(quantileRootFindFunGamma, guess, args=args);
+
+    return [[Math.exp(logParams[0]), Math.exp(logParams[1]) / x2], optimSuccess];
+  }
+
+}
+
+module.exports = { 
+  DiscreteUnivariateDistribution,
+  ContinuousUnivariateDistribution,
+  BernoulliDistribution,
+  BetaBinomialDistribution,
+  BinomialDistribution,
+  CategoricalDistribution,
+  DiscreteUniformDistribution,
+  GeometricDistribution,
+  HypergeometricDistribution,
+  NegativeBinomialDistribution,
+  PoissonDistribution,
+  BetaDistribution,
+  CauchyDistribution,
+  ExponentialDistribution,
+  GammaDistribution
+}
 
 
 

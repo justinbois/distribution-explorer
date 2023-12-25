@@ -1,3 +1,7 @@
+/**
+ * Make a guess of parameters to give lowest function value
+ */ 
+
 /** 
  * Compute the Jacobian of vector-valued f at point x using central differencing
  * @param {function} f - vector-valued function we are computing the Jacobian for with call signature f(x, ...args)
@@ -8,46 +12,38 @@
  */
 function jacCentralDiff(f, x, args=[], eps=4.7e-6) {
 	// Copys of x
-	let xPlus = x.clone();
-	let xMinus = x.clone();
+	let xPlus = deepCopy(x);
+	let xMinus = deepCopy(x);
 
 	// Determine length of vector output of f
 	let fOfx = f(x, ...args);
-	let m = fOfx.rows;
+	let m = fOfx.length;
 
 	// Number of columns in Jacobian
-	let n = x.rows;
+	let n = x.length;
 
 	// Jacobian
-	let J = new Matrix(m, n);
+	let J = zeros(m, n);
 
 	// Intermetiate values
 	let fOfxPlus;
 	let fOfxMinus;
 
 	for (let j = 0; j < n; j++) {
-		xPlus.set(j, 0, xPlus.get(j, 0) + eps);
-		xMinus.set(j, 0, xMinus.get(j, 0) - eps);
+		xPlus[j] += eps;
+		xMinus[j] -= eps;
 		fOfxPlus = f(xPlus, ...args);
 		fOfxMinus = f(xMinus, ...args);
-		xPlus.set(j, 0, xPlus.get(j, 0) - eps);
-		xMinus.set(j, 0, xMinus.get(j, 0) + eps);
+		xPlus[j] -= eps;
+		xMinus[j] += eps;
 
 		for (let i = 0; i < m; i++) {
-			J.set(i, j, (fOfxPlus.get(i, 0) - fOfxMinus.get(i, 0)) / 2.0 / eps);
+			J[i][j] = (fOfxPlus[i] - fOfxMinus[i]) / 2.0 / eps;
 		}
 	}
 
 	return J;
 }
-
-/**
- * Compute the quadratic form x^T A x.
- */
-function quadForm(A, x) {
-	return x.transpose().mmul(A.mmul(x)).get(0, 0)
-}
-
 
 function findRootTrustRegion(
 		f, 
@@ -61,9 +57,7 @@ function findRootTrustRegion(
 		minDelta=1e-12
   ) {
 	// Starting point
-	let x;
-	if (Matrix.isMatrix(x0)) x = x0;
-	else x = Matrix.columnVector(x0);
+	let x = deepCopy(x0);
 
 	// Trust region size
 	let delta = 0.99 * deltaBar;
@@ -75,13 +69,13 @@ function findRootTrustRegion(
 	let J = jac(f, x, args);
 
 	// J transpose dotted with J
-	let JTJ = J.transpose().mmul(J);
+	let JTJ = mmMult(transpose(J), J);
 
 	// J transpose dotted with r
-	let JTr = J.transpose().mmul(r);
+	let JTr = mvMult(transpose(J), r);
 
 	// 2-norm of J transpose dotted with r
-	let normJTr = JTr.norm();
+	let normJTr = norm(JTr);
 
 	let iters = 0;
 	while (iters < maxIters && checkTol(r, tol) && delta >= minDelta) {
@@ -89,29 +83,31 @@ function findRootTrustRegion(
 		let p = doglegStep(JTJ, JTr, normJTr, delta);
 
 		// Compute rho, ratio of actual to predicted reduction
-		let newr = f(x.clone().add(p), ...args);
+		let newr = f(vectorAdd(x, p), ...args);
 		let rho = computeRho(r, newr, J, p);
 
 		// Adjust trust region size delta
 		if  (rho < 0.25) {
-			delta = p.norm() / 4.0;
-		} else if (rho > 0.75 && Math.abs(p.norm() - delta) < 1e-12) {
+			delta = norm(p) / 4.0;
+		} else if (rho > 0.75 && Math.abs(norm(p) - delta) < 1e-12) {
 				delta = Math.min(2 * delta, deltaBar);
 		}
 
 		// Take the step
 		if (rho > eta) {
-			x.add(p);
+			x = vectorAdd(x, p);
 
 			r = newr;
 			J = jac(f, x, args);
-			JTJ = J.transpose().mmul(J);
-			JTr = J.transpose().mmul(r);
-			normJTr = JTr.norm();
+			JTJ = mmMult(transpose(J), J);
+			JTr = mvMult(transpose(J), r);
+			normJTr = norm(JTr);
 		}
 
 		iters += 1;
 	}
+
+	console.log(iters);
 
 	let success = !checkTol(r, tol);
 
@@ -121,9 +117,9 @@ function findRootTrustRegion(
 
 
 function computeRho(r, newr, J, p) {
-	let r2 = r.norm()**2;
-	let num = r2 - newr.norm()**2;
-	let denom = r2 - r.clone().add(J.mmul(p)).norm()**2;
+	let r2 = norm(r) ** 2;
+	let num = r2 - norm(newr)**2;
+	let denom = r2 - norm(vectorAdd(r, mvMult(J, p))) ** 2;
 
 	return num / denom;
 }
@@ -131,8 +127,9 @@ function computeRho(r, newr, J, p) {
 
 function checkTol(r, tol) {
 	// Return false if tolerance is met.
-	for (let i = 0; i < r.rows; i++) {
-		if (tol < Math.abs(r.get(i, 0))) return true;
+	const n = r.length;
+	for (let i = 0; i < n; i++) {
+		if (tol < Math.abs(r[i])) return true;
 	}
 
 	return false;
@@ -141,31 +138,29 @@ function checkTol(r, tol) {
 
 function doglegStep(JTJ, JTr, normJTr, delta) {
 	// Compute Newton step
-	let chol = new CholeskyDecomposition(JTJ);
-
-	// Should always be positive definite, but maybe close to singular.
-	let pJ = chol.solve(JTr).mul(-1.0);
+	let [pJ, posDef] = solvePosDef(JTJ, JTr);
+	pJ = svMult(-1.0, pJ);
 
 	// If the Newton step is in the trust region, take it.
-	if (pJ.norm() <= delta) {
+	if (posDef && norm(pJ) <= delta) {
 		return pJ;
 	}
 
 	// Compute the Cauchy step
 	let tau = Math.min(1, normJTr**3 / delta / quadForm(JTJ, JTr));
-	let pC = JTr.clone().mul(-tau * delta / normJTr);
+	let pC = svMult(-tau * delta / normJTr, JTr);
 
 	// Take Cauchy step if we failed to compute pJ or if we're on the
 	// boundary of the trust region
-	let pCnorm = pC.norm();
-	if (!chol.positiveDefinite || Math.abs(pC.norm - delta) <= 1e-12) {
+	let pCnorm = norm(pC);
+	if (!posDef || Math.abs(pCnorm - delta) <= 1e-12) {
 		return pC;
 	}
 
 	// Compute constants for quadratic formula solving ||pU + beta (pB-pU)||^2 = delta^2
-	let pJ2 = pJ.norm()**2;
+	let pJ2 = norm(pJ) ** 2;
 	let pC2 = pCnorm**2;
-	let pJpC = pJ.transpose().mmul(pC).get(0, 0);
+	let pJpC = dot(pJ, pC);
 	let a = pJ2 + pC2 - 2.0 * pJpC;
 	let b = 2.0 * (pJpC - pC2);
 	let c = pC2 - delta**2;
@@ -179,7 +174,7 @@ function doglegStep(JTJ, JTr, normJTr, delta) {
 
 	// Take the dogleg step
 	if (0.0 <= beta && beta <= 1) {
-		return pC.add(pJ.subtract(pC).mul(beta));
+		return vectorAdd(pC, svMult(beta, vectorAdd(pJ, svMult(-1.0, pC))));
 	} else { // Something is messed up; take Cauchy step (should never happen)
 		return pC;
 	}
@@ -281,109 +276,105 @@ function secantSolve(x0, f, args=[], tol=1e-8, maxIter=200, epsilon=1e-14, h=1e-
  * @param {function} f - function we are funding the root of with call signature f(x, ...args)
  * @param {float} lower - lower bound for root
  * @param {float} upper - upper bound for root
- * @param {function} df - derivative of function we are funding the root of with call signature df(x, ...args)
  * @param {float} tol - tolerance for convergence
  * @param {int} maxIter - maximum of Newton steps to take
  */
 function brentSolve(f, lower, upper, args=[], tol=1e-8, maxIter=1000) {
 	let a = lower;
 	let b = upper;
-    let fa = f(a, ...args);
-    let fb = f(b, ...args);
+  let fa = f(a, ...args);
+  let fb = f(b, ...args);
 
-    // We may have already guessed the solution
-    if (Math.abs(fa) < tol) return a;
-    if (Math.abs(fb) < tol) return b;
+  // We may have already guessed the solution
+  if (Math.abs(fa) < tol) return a;
+  if (Math.abs(fb) < tol) return b;
 
-    // Solution is not bracketed
-    if (fa * fb >= 0) return null;
+  // Solution is not bracketed
+  if (fa * fb >= 0) {
+  	console.log('failed here', fa, fb, fa * fb);
+  	return null;
+	}
 
-    // c is where we are closing in on the root
-    let c = a;
-    let fc = fa;
+  // c is where we are closing in on the root
+  let c = a;
+  let fc = fa;
 
-  	let iter = 0;
-    while (iter++ < maxIter) {
-    	let prevStep = b - a;
+	let iter = 0;
+  while (iter++ < maxIter) {
+  	let prevStep = b - a;
 
-	    // Make sure a has the larger function value
-	    if (Math.abs(fc) < Math.abs(fb)) {      
-	    	[a, b, c] = [b, c, b];
-	    	[fa, fb, fc] = [fb, fc, fb];
-	    }
-
-	    // Next step toward root
-	    let newStep = (c - b) / 2.0;
-
-	    // Adjusted tolerance
-	    let tolAdj = 1e-15 * Math.abs(b) + tol / 2;
-
-	    // Found a root!
-    	if (Math.abs(newStep) <= tolAdj || fb === 0 ) {
-      		return b;
-    	}
-
-	    // Try interpolation
-	    if (Math.abs(prevStep) > tolAdj && Math.abs(fa) > Math.abs(fb)) {
-	    	let p;
-	    	let q;
-	    	let t1;
-	    	let t2;
-	    	let cb = c - b;
-	    	if (a === c) { // a and c coincide, so try linear interpolation
-	    		t1 = fb / fa;
-	    		p = cb * t1;
-	    		q = 1.0 - t1;
-	    	}
-	    	else { // Use inverse quadratic interpolation
-	    		q = fa / fc;
-	    		t1 = fb / fc;
-	    		t2 = fb / fa;
-	    		p = t2 * (cb * q * (q - t1) - (b - a) * (t1 - 1.0));
-	    		q = (q - 1.0) * (t1 - 1.0) * (t2 - 1.0);
-	    	}
-
-	    	// Fix the signs on p and q
-	    	if (p > 0) q = -q;
-	    	else p = -p;
-
-	    	// Accept the step if it's not too large and falls in interval
-	    	if (p < (0.75 * cb * q - Math.abs(tolAdj * q) / 2.0) 
-	    		&& p < Math.abs(prevStep * q / 2.0)) { 
-		        newStep = p / q;
-	      	}
-	    }
-
-	    // If we can't do interpolation, do bisection
-	    // First make sure step is not smaller than the tolerance
-        if (Math.abs(newStep) < tolAdj) {
-	        newStep = (newStep > 0) ? tolAdj : -tolAdj;
-        }
-    
-        // Swap with the previous approximation
-        a = b;
-        fa = fb;
-
-        // Take the step
-        b += newStep;
-        fb = f(b, ...args);
-    
-    	// Adjust c so that the sign of f(c) is opposite f(b)
-        if ((fb > 0 && fc > 0) || (fb < 0 && fc < 0)) {
-          c = a; 
-          fc = fa;
-        }
+    // Make sure a has the larger function value
+    if (Math.abs(fc) < Math.abs(fb)) {      
+    	[a, b, c] = [b, c, b];
+    	[fa, fb, fc] = [fb, fc, fb];
     }
 
-    // If we did not converge, return null
-    return null;
+    // Next step toward root
+    let newStep = (c - b) / 2.0;
+
+    // Adjusted tolerance
+    let tolAdj = 1e-15 * Math.abs(b) + tol / 2;
+
+    // Found a root!
+  	if (Math.abs(newStep) <= tolAdj || fb === 0 ) {
+    		return b;
+  	}
+
+    // Try interpolation
+    if (Math.abs(prevStep) > tolAdj && Math.abs(fa) > Math.abs(fb)) {
+    	let p;
+    	let q;
+    	let t1;
+    	let t2;
+    	let cb = c - b;
+    	if (a === c) { // a and c coincide, so try linear interpolation
+    		t1 = fb / fa;
+    		p = cb * t1;
+    		q = 1.0 - t1;
+    	}
+    	else { // Use inverse quadratic interpolation
+    		q = fa / fc;
+    		t1 = fb / fc;
+    		t2 = fb / fa;
+    		p = t2 * (cb * q * (q - t1) - (b - a) * (t1 - 1.0));
+    		q = (q - 1.0) * (t1 - 1.0) * (t2 - 1.0);
+    	}
+
+    	// Fix the signs on p and q
+    	if (p > 0) q = -q;
+    	else p = -p;
+
+    	// Accept the step if it's not too large and falls in interval
+    	if (p < (0.75 * cb * q - Math.abs(tolAdj * q) / 2.0) 
+    		&& p < Math.abs(prevStep * q / 2.0)) { 
+	        newStep = p / q;
+      	}
+    }
+
+    // If we can't do interpolation, do bisection
+    // First make sure step is not smaller than the tolerance
+    if (Math.abs(newStep) < tolAdj) {
+      newStep = (newStep > 0) ? tolAdj : -tolAdj;
+    }
+
+    // Swap with the previous approximation
+    a = b;
+    fa = fb;
+
+    // Take the step
+    b += newStep;
+    fb = f(b, ...args);
+
+	// Adjust c so that the sign of f(c) is opposite f(b)
+    if ((fb > 0 && fc > 0) || (fb < 0 && fc < 0)) {
+      c = a; 
+      fc = fa;
+    }
+  }
+
+  // If we did not converge, return null
+  return null;
 }
 
 
 module.exports = { jacCentralDiff, findRootTrustRegion, computeRho, checkTol, doglegStep, brentSolve, secantSolve, newtonSolve };
-
-
-
-
-
-

@@ -1,180 +1,47 @@
+import json
 import pyparsing
-
-discrete_dists = [
-    "bernoulli",
-    "binomial",
-    "categorical",
-    "discrete_uniform",
-    "geometric",
-    "hypergeometric",
-    "negative_binomial",
-    "negative_binomial_mu_phi",
-    "negative_binomial_r_b",
-    "poisson",
-]
-
-continuous_dists = [
-    "beta",
-    "cauchy",
-    "exponential",
-    "gamma",
-    "inverse_gamma",
-    "halfcauchy",
-    "halfnormal",
-    "halfstudent_t",
-    "lognormal",
-    "normal",
-    "pareto",
-    "student_t",
-    "uniform",
-    "weibull",
-]
-
-extra_funs = {
-    "bernoulli": [],
-    "beta_binomial": ["lnbeta", "lnchoice", "lnfactorial", "lngamma"],
-    "binomial": ["lnchoice", "lnfactorial"],
-    "categorical": [],
-    "discrete_uniform": [],
-    "geometric": [],
-    "hypergeometric": ["lnchoice", "lnfactorial"],
-    "negative_binomial": ["lngamma", "lnfactorial"],
-    "negative_binomial_mu_phi": ["lngamma", "lnfactorial"],
-    "negative_binomial_r_b": ["lngamma", "lnfactorial"],
-    "poisson": ["lnfactorial"],
-    "beta": [
-        "lngamma",
-        "lnbeta",
-        "regularized_incomplete_beta",
-        "betacf",
-        "log1p",
-        "isone",
-        "iszero",
-    ],
-    "cauchy": [],
-    "exponential": [],
-    "gamma": ["lngamma", "gammainc_u", "gammainc_l"],
-    "halfcauchy": [],
-    "halfnormal": ["erf", "erfinv"],
-    "halfstudent_t": ["lngamma", "log1p", "regularized_incomplete_beta", "betacf"],
-    "inverse_gamma": ["lngamma", "gammainc_u", "gammainc_l"],
-    "lognormal": ["erf", "erfinv"],
-    "normal": ["erf", "erfinv"],
-    "pareto": [],
-    "student_t": ["lngamma", "log1p", "regularized_incomplete_beta", "betacf"],
-    "uniform": [],
-    "weibull": [],
-}
+import re
 
 
-def read_js_code(fname, cut_comments=True, cut_exports=True):
+def _read_js_code(fname, cut_comments=True, cut_exports=True):
+    """Read in a JS file into a string, possibly cutting comments and
+    export statements."""
     out_strs = []
     within_comment = False
     with open(fname, "r") as f:
         for line in f:
-            if not (cut_exports and 'exports' in line):
+            if not (cut_exports and "exports" in line):
                 out_strs.append(line)
 
-    out = ''.join(out_strs)
+    out = "".join(out_strs)
 
     if cut_comments:
+        # First, the /* */ style comments
         comment_parser = pyparsing.nestedExpr("/*", "*/").suppress()
         out = comment_parser.transformString(out)
+
+        # And also remove // style comments.
+        out = re.sub(r"//.*?\n", "\n", out)
 
     return out
 
 
-def read_js_codes():
-    discrete_callback = read_js_code("discrete_callback_code.js")
-    continuous_callback = read_js_code("continuous_callback_code.js")
-    quantile_setter_callback = read_js_code("quantile_setter_callback_code.js")
-    reset_button_callback = read_js_code("reset_button_callback_code.js")
-    utils = read_js_code("utility_functions.js")
-    discrete_code = read_js_code("discrete_dists.js")
-    continuous_code = read_js_code("continuous_dists.js")
-    quantile_setter_code = read_js_code("quantile_setter_dists.js")
-    matrix_code = read_js_code("matrix.js")
-    root_finding_code = read_js_code("root_finding.js")
-    reset_button_code = read_js_code("reset_button_dists.js")
+def _extract_function(jstext, fun_name, new_fun_name=None):
+    """Extract a function from JS code."""
+    start_ind = jstext.find("function " + fun_name)
 
-    return (
-        discrete_callback,
-        continuous_callback,
-        quantile_setter_callback,
-        reset_button_callback,
-        utils,
-        discrete_code,
-        continuous_code,
-        quantile_setter_code,
-        matrix_code,
-        root_finding_code,
-        reset_button_code,
-    )
+    # Initialize list of open {
+    open_braces = 1
+    end_ind = start_ind + jstext[start_ind:].find("{") + 1
+    while end_ind < len(jstext) and open_braces > 0:
+        if jstext[end_ind] == '}':
+            open_braces -= 1
+        elif jstext[end_ind] == '{':
+            open_braces += 1
 
+        end_ind += 1
 
-def write_slider_start_stop_callbacks():
-    with open("../distribution_explorer/callbacks.py", "a") as f:
-        f.write(
-            '''start = """
-    slider.start = Math.max(min_value, Number(cb_obj.value));
-    slider.step = (slider.end - slider.start) / 1000;
-"""
-
-end = """
-slider.end = Math.min(max_value, Number(cb_obj.value));
-slider.step = (slider.end - slider.start) / 1000;
-"""
-
-start_int = """
-slider.start = Math.max(Math.floor(min_value), Math.floor(Number(cb_obj.value)));
-"""
-
-end_int = """
-slider.end = Math.min(Math.floor(max_value), Math.floor(Number(cb_obj.value)));
-"""
-
-'''
-        )
-
-
-def write_quantile_setter_switch_callbacks():
-    with open("../distribution_explorer/callbacks.py", "a") as f:
-        f.write(
-            '''quantile_setter_switch = """
-    if (cb_obj.active) {
-        for (let i = 0; i < sliders.length; i++) {
-            sliders[i].disabled = true;
-        }
-        x1_box.disabled = false;
-        p1_box.disabled = false;
-        x2_box.disabled = false;
-        p2_box.disabled = false;
-    } else {
-        for (let i = 0; i < sliders.length; i++) {
-            sliders[i].disabled = false;
-        }
-        quantile_setter_div.text = '';
-        x1_box.disabled = true;
-        p1_box.disabled = true;
-        x2_box.disabled = true;
-        p2_box.disabled = true;
-    }
-"""
-
-'''
-        )
-
-
-def extract_fun(file_str, fun_name, new_fun_name=None):
-    start_ind = file_str.find("function " + fun_name)
-    end_ind = file_str[start_ind + 1 :].find("\nfunction ")
-
-    if end_ind == -1:
-        end_ind = len(file_str)
-    else:
-        end_ind += start_ind - 1
-
-    fun_str = file_str[start_ind:end_ind].rstrip() + "\n\n"
+    fun_str = jstext[start_ind:end_ind].rstrip() + "\n\n"
 
     if new_fun_name is not None:
         fun_str = fun_str.replace(fun_name, new_fun_name, 1)
@@ -182,169 +49,144 @@ def extract_fun(file_str, fun_name, new_fun_name=None):
     return fun_str
 
 
-def write_discrete_utils(f):
-    f.write(extract_fun(utils, "arange"))
-    f.write(extract_fun(utils, "discrete_cdf"))
-    f.write(extract_fun(utils, "update_y_p"))
-    f.write(extract_fun(utils, "update_y_c_discrete"))
+def _extract_class(jstext, classname):
+    """Extract a class from JS code."""
+    start_ind = jstext.find(f"class {classname}")
+    if start_ind == -1:
+        raise RuntimeError(f"Could not find class {classname}.")
+
+    # Read until first open brace
+    i = start_ind + jstext[start_ind:].find("{") + 1
+
+    # Read until open brace is closed
+    nopen = 1
+    while i < len(jstext) and nopen > 0:
+        if jstext[i] == "{":
+            nopen += 1
+        elif jstext[i] == "}":
+            nopen -= 1
+        i += 1
+
+    if i == len(jstext):
+        raise RuntimeError("Failed to find end of class definition.")
+
+    return jstext[start_ind : i + 1]
 
 
-def write_continuous_utils(f):
-    f.write(extract_fun(utils, "linspace"))
-    f.write(extract_fun(utils, "update_y_p"))
-    f.write(extract_fun(utils, "update_y_c_continuous"))
+def _callback_class_and_function_dicts():
+    """Read in all pertinent JS classes and functions and make
+    dictionary where each key is a function or class and each value is
+    a string containing the JS corresponding code."""
+    output_dict = {}
+
+    # Read in code for probability distribution classes
+    code = _read_js_code("prob_dists.js")
+
+    # Find all class names
+    classes = re.findall(r"class\s+(\w+)", code)
+
+    # Store all classes in a dictionary
+    for class_name in classes:
+        output_dict[class_name] = _extract_class(code, class_name)
+
+    # Now all functions from all pertinent files
+    for filename in (
+        "utils_math.js",
+        "utils_linalg.js",
+        "utils_interactive_plotting.js",
+        "root_finding.js",
+    ):
+        code = _read_js_code(filename)
+        functions = re.findall(r"function\s+(\w+)", code)
+        for fun in functions:
+            output_dict[fun] = _extract_function(code, fun)
+
+    # Now all of the callbacks for specific widgets
+    for fname in [
+        "slider_start_callback",
+        "slider_end_callback",
+        "int_slider_start_callback",
+        "int_slider_end_callback",
+        "quantile_setter_switch_callback",
+        "quantile_setter_callback",
+        "reset_button_callback",
+        "continuous_callback",
+        "discrete_callback",
+    ]:
+        output_dict[fname] = _read_js_code(f"{fname}.js")
+
+    return output_dict
 
 
-def write_discrete(dist):
-    with open("../distribution_explorer/callbacks.py", "a") as f:
-        f.write(f'{dist}_callback = """')
+def _dependencies(code_dict):
+    """Take a dictionary of JS classes and functions. For each class or
+    function, make a list of classes and functions on which they depend.
+    The result is a dictionary where the keys are function/class names
+    and each value is a list containing the functions or classes that
+    the key is dependent upon.
+    """
+    # First pass
+    output = {}
+    for f in code_dict:
+        output[f] = []
+        for g in code_dict:
+            if g + '(' in code_dict[f] and g != f:
+                output[f].append(g)
 
-        write_discrete_utils(f)
-
-        for extra in extra_funs[dist]:
-            f.write(extract_fun(utils, extra))
-            f.write("\n\n")
-
-        f.write(extract_fun(discrete_code, f"{dist}_prob", "probFun"))
-
-        f.write(discrete_callback)
-        f.write('\n"""\n\n')
-
-
-def write_continuous(dist):
-    with open("../distribution_explorer/callbacks.py", "a") as f:
-        f.write(f'{dist}_callback = """')
-
-        write_continuous_utils(f)
-
-        for extra in extra_funs[dist]:
-            f.write(extract_fun(utils, extra))
-            f.write("\n\n")
-
-        f.write(extract_fun(continuous_code, f"{dist}_prob", "probFun"))
-        f.write(extract_fun(continuous_code, f"{dist}_cdf", "cdfFun"))
-
-        f.write(continuous_callback)
-        f.write('\n"""\n\n')
+    # One manual one: Trust region uses jacCentralDiff
+    output['findRootTrustRegion'].append('jacCentralDiff')
 
 
-def write_dict():
-    with open("../distribution_explorer/callbacks.py", "a") as f:
-        f.write("callbacks = {\n")
-        for dist in discrete_dists + continuous_dists:
-            f.write('\t"' + dist + '": ' + dist + "_callback,\n")
-        f.write("}\n\n")
+    # Add in super classes for distributions
+    for f, code in code_dict.items():
+        if "extends UnivariateDistribution" in code:
+            output[f].append("UnivariateDistribution")
+        elif "extends ContinuousUnivariateDistribution" in code:
+            output[f] += ["UnivariateDistribution", "ContinuousUnivariateDistribution"]
+        elif "extends DiscreteUnivariateDistribution" in code:
+            output[f] += ["UnivariateDistribution", "DiscreteUnivariateDistribution"]
+
+    # Keep going through until nothing is added
+    n_added = 1
+    while n_added > 0:
+        n_added = 0
+        for f in code_dict:
+            for g in output[f]:
+                for h in output[g]:
+                    if h not in output[f]:
+                        output[f].append(h)
+                        n_added += 1
+
+    return output
 
 
-def write_warning():
-    with open("../distribution_explorer/callbacks.py", "w") as f:
-        f.write(
-            "# THIS FILE IS AUTOGENERATED BY generate_callbacks.py. DO NOT EDIT.\n\n"
-        )
+def write_callbacks(callback_fname, code_dict):
+    """Manually writing better than using JSON for readability."""
+    code_str = "_callbacks = {\n"
 
+    # Add JS functions
+    for fun, code in code_dict.items():
+        code_str += '    "' + fun + '": """\n'
+        code_str += code
+        code_str += '""",\n'
+    code_str += '}'
 
-def write_quantile_setter(dist):
-    with open("../distribution_explorer/callbacks.py", "a") as f:
-        f.write(f'{dist}_quantile_setter_callback = """')
+    # Clean up superfluous newlines (created by deleting comments)
+    code_str = re.sub(r"(^\s*$\n){3,}", "\n", code_str, flags=re.MULTILINE)
 
-        if dist not in ["exponential", "uniform"]:
-            f.write(matrix_code)
-            f.write("\n\n")
+    # Dependencies
+    code_str += "\n\n_dependencies = {\n"
+    deps = _dependencies(code_dict)
 
-            f.write(root_finding_code)
+    for fun, depends in deps.items():
+        code_str += '    "' + fun + '": ' + str(depends) + ',\n'
+    code_str += '}'
 
-            # for fun in ['jacCentralDiff', 'findRootTrustRegion', 'computeRho', 'checkTol', 'doglegStep']:
-            #     f.write(extract_fun(root_finding_code, fun))
-            #     f.write("\n\n")
-
-        for extra in extra_funs[dist]:
-            f.write(extract_fun(utils, extra))
-            f.write("\n\n")
-
-        f.write(extract_fun(continuous_code, f"{dist}_cdf"))
-
-        f.write(extract_fun(quantile_setter_code, "checkQuantileInput"))
-
-        f.write(
-            extract_fun(
-                quantile_setter_code,
-                f"{dist}_quantile_setter",
-                "quantile_setter_callback",
-            )
-        )
-
-        f.write(quantile_setter_callback)
-        f.write('\n"""\n\n')
-
-
-def write_reset_button(dist):
-    with open("../distribution_explorer/callbacks.py", "a") as f:
-        f.write(f'{dist}_reset_button_callback = """')
-
-        write_continuous_utils(f)
-
-        for extra in extra_funs[dist]:
-            f.write(extract_fun(utils, extra))
-            f.write("\n\n")
-
-        f.write(root_finding_code)
-
-        f.write(extract_fun(continuous_code, f"{dist}_cdf"))
-
-        f.write(extract_fun(reset_button_code, f"{dist}_reset", 'reset_button_callback'))
-        f.write(reset_button_callback)
-        f.write('\n"""\n\n')
-
-
-def write_reset_button_dict():
-    with open("../distribution_explorer/callbacks.py", "a") as f:
-        f.write("reset_button_callbacks = {\n")
-        for dist in discrete_dists + continuous_dists:
-            f.write('\t"' + dist + '": ' + dist + "_reset_button_callback,\n")
-
-        f.write("}\n\n")
-
-
-def write_quantile_setter_dict():
-    with open("../distribution_explorer/callbacks.py", "a") as f:
-        f.write("quantile_setter_callbacks = {\n")
-        for dist in discrete_dists + continuous_dists:
-            f.write('\t"' + dist + '": ' + dist + "_quantile_setter_callback,\n")
-
-        f.write("}\n\n")
+    with open(callback_fname, "w") as f:
+        f.write("# THIS FILE IS AUTOGENERATED. DO NOT EDIT.\n\n")
+        f.write(code_str)
 
 
 if __name__ == "__main__":
-    (
-        discrete_callback,
-        continuous_callback,
-        quantile_setter_callback,
-        reset_button_callback,
-        utils,
-        discrete_code,
-        continuous_code,
-        quantile_setter_code,
-        matrix_code,
-        root_finding_code,
-        reset_button_code,
-    ) = read_js_codes()
-
-    write_warning()
-    write_slider_start_stop_callbacks()
-    write_quantile_setter_switch_callbacks()
-
-    for dist in discrete_dists:
-        write_discrete(dist)
-
-    for dist in continuous_dists:
-        write_continuous(dist)
-
-    for dist in discrete_dists + continuous_dists:
-        write_quantile_setter(dist)
-
-    for dist in discrete_dists + continuous_dists:
-        write_reset_button(dist)
-
-    write_dict()
-    write_quantile_setter_dict()
-    write_reset_button_dict()
+    code_dict = _callback_class_and_function_dicts()
+    write_callbacks('../distribution_explorer/callbacks.py', code_dict)

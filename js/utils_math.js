@@ -1,149 +1,124 @@
 function isclose(x, y, rtol = 1.0e-7, atol = 1.0e-8) {
-    return Math.abs(x - y) <= (atol + rtol * Math.abs(y));
+  return Math.abs(x - y) <= (atol + rtol * Math.abs(y));
 }
 
+
 function isone(x, rtol = 1.0e-5, atol = 1.0e-8) {
-    return isclose(x, 1.0, rtol, atol);
+  return isclose(x, 1.0, rtol, atol);
 }
 
 
 function iszero(x, eps = 1.0e-8) {
-    return Math.abs(x) <= eps;
-}
-
-/**
- * Set the y-ranges for PDF and CDF plots.
- */
-function set_y_ranges(p_p, p_c, source_p) {
-    p_c.y_range.start = -0.04;
-    p_c.y_range.end = 1.04;        
-
-    let pdfMax = source_p.data['y_p'];
-    p_p.y_range.start = -pdfMax * 0.04;
-    p_p.y_range.end = 1.04 * pdfMax;
+  return Math.abs(x) <= eps;
 }
 
 
-function discrete_cdf(cumsum, y_p) {
-    var y_c = [];
+function logspace(start, stop, n) {
+  let x = new Array(n);
+  let step = (stop - start) / (n - 1);
+  for (let i = 0; i < n; i++) {
+    x[i] = Math.pow(10, start + i * step);
+  }
 
-    y_c.push(cumsum, cumsum);
-    for (var i = 0; i < y_p.length; i++) {
-        if (!isNaN(y_p[i])) cumsum += y_p[i];
-        y_c.push(cumsum, cumsum);
-    }
-
-    return y_c;
-}
-
-
-function update_y_p(probFun, x_p, arg1, arg2, arg3) {
-    // Compute PMF/PDF
-    var y_p = [];
-    for (var i = 0; i < x_p.length; i++) {
-      y_p.push(probFun(x_p[i], arg1, arg2, arg3));
-    }
-
-    return y_p;
-}
-
-
-function update_y_c_discrete(probFun, x_p, y_p, arg1, arg2, arg3) {
-    // Compute CDF
-    var cumsum = 0.0;
-    var summand = 0.0;
-    for (var i = 0; i < x_p[0]; i++) {
-        summand = probFun(x_p[i], arg1, arg2, arg3);
-        if (!isNaN(summand)) cumsum += summand;
-    }
-
-    y_c = discrete_cdf(cumsum, y_p);
-    return y_c;
-}
-
-
-function update_y_c_continuous(cdfFun, x_c, arg1, arg2, arg3) {
-    var y_c = [];
-    for (var i = 0; i < x_c.length; i ++)
-        y_c.push(cdfFun(x_c[i], arg1, arg2, arg3));
-
-    return y_c;
+  return x;
 }
 
 
 function linspace(start, stop, n) {
-	var x = [];
-	var currValue = start;
-	var step = (stop - start) / (n - 1);
-	for (var i = 0; i < n; i++) {
-		x.push(currValue);
-		currValue += step;
-	}
-	return x;
+  let x = new Array(n);
+  let step = (stop - start) / (n - 1);
+  for (let i = 0; i < n; i++) {
+    x[i] = start + i * step;
+  }
+
+  return x;
 }
 
 
 function arange(start, stop) {
-	var x = [];
-	for (var i = start; i < stop; i++) x.push(i);
-	return x;
+  let x = new Array(stop - start);
+  for (let i = 0; i < stop - start; i++) {
+    x[i] = start + i;
+  }
+
+  return x;
+}
+
+
+function meshgrid(x, y) {
+  let m = y.length;
+  let n = x.length;
+
+  let xGrid = new Array(m);
+  let yGrid = new Array(m);
+
+  for (let i = 0; i < m; i++) {
+    xGrid[i] = new Array(n);
+    yGrid[i] = new Array(n);
+    for (let j = 0; j < n; j++) {
+      xGrid[i][j] = x[j];
+      yGrid[i][j] = y[i];
+    }
+  }
+
+  return [xGrid, yGrid];
 }
 
 
 function logit(x) {
-    if (x == 0) return -Infinity;
+  if (x == 0) return -Infinity;
 
-    if (x == 1) return Infinity;
+  if (x == 1) return Infinity;
 
-    if (x < 0 || x > 1) return NaN;
+  if (x < 0 || x > 1) return NaN;
 
-    return Math.log(x / (1.0 - x));
+  return Math.log(x / (1.0 - x));
 }
 
 
 function log1p(x) {
-    // log of 1 + x, 
-    // adapted from Andreas Madsen's mathfn, Copyright (c) 2013 Andreas Madsen
-    if (x <= -1.0) {
-        throw new RangeError('Argument must be greater than -1.0');
-    }
+  // log of 1 + x, 
+  // adapted from Andreas Madsen's mathfn, Copyright (c) 2013 Andreas Madsen
+  if (x <= -1.0) {
+    throw new RangeError('Argument must be greater than -1.0');
+  }
 
-    // x is large enough that the obvious evaluation is OK
-    else if (Math.abs(x) > 1e-4) {
-        return Math.log(1.0 + x);
-    }
+  // x is large enough that the obvious evaluation is OK
+  else if (Math.abs(x) > 1e-4) {
+    return Math.log(1.0 + x);
+  }
 
-    // Use Taylor approx. log(1 + x) = x - x^2/2 with error roughly x^3/3
-    // Since |x| < 10^-4, |x|^3 < 10^-12, relative error less than 10^-8
-    else {
-        return (-0.5*x + 1.0)*x;
-    }
+  // Use Taylor approx. log(1 + x) = x - x^2/2 with error roughly x^3/3
+  // Since |x| < 10^-4, |x|^3 < 10^-12, relative error less than 10^-8
+  else {
+    return (-0.5*x + 1.0)*x;
+  }
 }
 
 
 function erf(x) {
-    // Error function using polynomial approximation (accurate to about 10^-7)
-    var a = [1.00002368,
-             0.37409196,
-             0.09678418,
-             -0.18628806,
-             0.27886807,
-             -1.13520398,
-             1.48851587,
-             -0.82215223,
-             0.17087277];
+  // Error function using polynomial approximation (accurate to about 10^-7)
+  var a = [1.00002368,
+           0.37409196,
+           0.09678418,
+           -0.18628806,
+           0.27886807,
+           -1.13520398,
+           1.48851587,
+           -0.82215223,
+           0.17087277];
 
-    var t = 1 / (1 + Math.abs(x)/2);
-    var expSum = -Math.pow(x, 2) - 1.26551223;
+  var t = 1 / (1 + Math.abs(x)/2);
+  var expSum = -Math.pow(x, 2) - 1.26551223;
 
-    for (var i = 0; i < a.length; i++) {
-        expSum += a[i] * Math.pow(t, i+1);
-    }
+  for (var i = 0; i < a.length; i++) {
+      expSum += a[i] * Math.pow(t, i+1);
+  }
 
-    var result = 1 - t * Math.exp(expSum);
+  var result = 1 - t * Math.exp(expSum);
 
-    if (x < 0) return -result;
-    return result;
+  if (x < 0) return -result;
+  return result;
 }
 
 
@@ -285,7 +260,7 @@ function betacf(x, a, b) {
 }
 
 
-function regularized_incomplete_beta(x, a, b) {
+function regularizedIncompleteBeta(x, a, b) {
     // From Andreas Madsen's mathfn, Copyright (c) 2013 Andreas Madsen
     // Computes incomplete beta function as a continued fraction
     if (x < 0 || x > 1) {
@@ -311,8 +286,8 @@ function regularized_incomplete_beta(x, a, b) {
 }
 
 
-function incomplete_beta(x, a, b) {
-    return regularized_incomplete_beta(x, a, b) * Math.exp(lnbeta(a, b));
+function incompleteBeta(x, a, b) {
+    return regularizedIncompleteBeta(x, a, b) * Math.exp(lnbeta(a, b));
 }
 
 
@@ -344,15 +319,15 @@ function lngamma(z) {
 }
 
 
-function gammainc_u(x, s, regularized) {
+function gammaincU(x, s, regularized) {
     // Adapted from Compute.io package
     var EPSILON = 1e-12;
 
     if (x <= 1.1 || x <= s) {
         if (regularized !== false) {
-            return 1 - gammainc_l(x, s, regularized);
+            return 1 - gammaincL(x, s, regularized);
         } else {
-            return Math.exp(lngamma(s)) - gammainc_l(x, s, regularized);
+            return Math.exp(lngamma(s)) - gammaincL(x, s, regularized);
         }
     }
 
@@ -381,7 +356,7 @@ function gammainc_u(x, s, regularized) {
 }
 
 
-function gammainc_l(x, s, regularized) {
+function gammaincL(x, s, regularized) {
     // Adapted from Compute.io package
     var EPSILON = 1e-12;
 
@@ -394,9 +369,9 @@ function gammainc_l(x, s, regularized) {
 
     if(x > 1.1 && x > s) {
         if (regularized !== false) {
-            return 1 - gammainc_u(x, s, regularized);
+            return 1 - gammaincU(x, s, regularized);
         } else {
-            return Math.exp(lngamma(s)) - gammainc_u(x, s, regularized);
+            return Math.exp(lngamma(s)) - gammaincU(x, s, regularized);
         }
     }
 
@@ -422,8 +397,8 @@ function gammainc_l(x, s, regularized) {
 
 function lnfactorial(n) {
   if (n > 254) { // Use Stirling's approximation
-    var x = n + 1;
-    return (x - 0.5)*Math.log(x) - x + 0.5*Math.log(2*Math.PI) + 1.0/(12.0*x);
+    let x = n + 1;
+    return (x - 0.5) * Math.log(x) - x + 0.5 * Math.log(2 * Math.PI) + 1.0 / (12.0 * x);
   }
   else { // Look it up
     const lnfact = [0.000000000000000,
@@ -686,20 +661,4 @@ function lnfactorial(n) {
 }
 
 
-exports.isone = isone;
-exports.iszero = iszero;
-exports.isclose = isclose;
-exports.lnfactorial = lnfactorial;
-exports.linspace = linspace;
-exports.arange = arange;
-exports.log1p = log1p;
-exports.erf = erf;
-exports.erfinv = erfinv;
-exports.lnchoice = lnchoice;
-exports.lnbeta = lnbeta;
-exports.betacf = betacf;
-exports.regularized_incomplete_beta = regularized_incomplete_beta;
-exports.incomplete_beta = incomplete_beta;
-exports.lngamma = lngamma;
-exports.gammainc_u = gammainc_u;
-exports.gammainc_l = gammainc_l;
+module.exports = { isclose, isone, iszero, linspace, logspace, meshgrid, arange, logit, log1p, erf, erfinv, lnchoice, lnbeta, betacf, regularizedIncompleteBeta, incompleteBeta, lngamma, gammaincU, gammaincL, lnfactorial };
