@@ -21,8 +21,14 @@ source_c.data['x'] = x_c;
 // Obtain parameter values
 let params = paramsFromSliders(sliders);
 
+// Compute PDF
+let pdf = dist.pdf(x_p, params);
+
+// Convert Infinity's to NaN's for plotting
+pdf = pdf.map(val => (val === Infinity || val === -Infinity) ? NaN : val);
+
 // Update the PDF and CDF
-source_p.data['y_p'] = dist.pdf(x_p, params);
+source_p.data['y_p'] = pdf;
 source_c.data['y_c'] = dist.cdf(x_c, params);
 
 // Update quantiles

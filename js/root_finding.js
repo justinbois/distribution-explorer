@@ -107,8 +107,6 @@ function findRootTrustRegion(
 		iters += 1;
 	}
 
-	console.log(iters);
-
 	let success = !checkTol(r, tol);
 
 	return [x, success];
@@ -291,7 +289,6 @@ function brentSolve(f, lower, upper, args=[], tol=1e-8, maxIter=1000) {
 
   // Solution is not bracketed
   if (fa * fb >= 0) {
-  	console.log('failed here', fa, fb, fa * fb);
   	return null;
 	}
 

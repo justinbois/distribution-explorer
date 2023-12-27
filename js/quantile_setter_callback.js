@@ -12,21 +12,29 @@ if (quantileSetterSwitch.active) {
   let params = paramsFromSliders(sliders);
 
   // Make sure the input is ok.
-  let inputOk = checkQuantileInput(x, p, dist.xMin(params), dist.xMax(params), dist.varName, quantileSetterDiv);
+  let inputOk = checkQuantileInput(x, p, dist.hardMin, dist.hardMax, dist.varName, quantileSetterDiv);
 
   if (inputOk) {
+    // Extra parameters to be passed into quantileSet
+    let extraParams = [];
+    for (let i = 0; i < dist.paramNames.length; i++) {
+      if (dist.fixedParamsInds.includes(i)) {
+        extraParams.push(params[i]);
+      }
+    }
+
     // Obtain parameter values to match quantiles
-    let [optimParams, optimSuccess] = dist.quantileSet(x, p);
+    let [optimParams, optimSuccess] = dist.quantileSet(x, p, extraParams);
 
     let text;
     if (optimSuccess) {
       // Update text
       text = '<p>';
       for (let i = 0; i < optimParams.length - 1; i++) {
-        text += sliders[i].title + ' = ' + optimParams[i].toPrecision(4) + ', ';
+        text += sliders[dist.activeParamsInds[i]].title + ' = ' + optimParams[i].toPrecision(4) + ', ';
       }
       let i = optimParams.length - 1;
-      text += sliders[i].title + ' = ' + optimParams[i].toPrecision(4) + '</p>';
+      text += sliders[dist.activeParamsInds[i]].title + ' = ' + optimParams[i].toPrecision(4) + '</p>';
     } else{
       text = '<p style="color:tomato;">Failed to find parameters to match quantiles.</p>';
     }
@@ -36,11 +44,11 @@ if (quantileSetterSwitch.active) {
     if (optimSuccess) {
       // Update slider ranges to put parameter values in middle.
       for (let i = 0; i < optimParams.length; i++ ){
-        if (sliders[i].start > optimParams[i] || sliders[i].end < optimParams[i]) {
-          startBoxes[i].value = (4 * optimParams[i] / 1001).toPrecision(4);
-          endBoxes[i].value = (4 * optimParams[i]).toPrecision(4);        
+        if (sliders[dist.activeParamsInds[i]].start > optimParams[i] || sliders[dist.activeParamsInds[i]].end < optimParams[i]) {
+          startBoxes[dist.activeParamsInds[i]].value = (4 * optimParams[i] / 1001).toPrecision(4);
+          endBoxes[dist.activeParamsInds[i]].value = (4 * optimParams[i]).toPrecision(4);        
         }
-        sliders[i].value = optimParams[i];
+        sliders[dist.activeParamsInds[i]].value = optimParams[i];
       }
 
       // Reset the view so the PDF/CDF are clearly displayed.

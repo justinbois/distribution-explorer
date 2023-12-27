@@ -28,82 +28,23 @@ continuous_dists = [
     "cauchy",
     "exponential",
     "gamma",
-    "halfcauchy",
+    "halfcauchy",  # Same as halfcauchy
+    "half_cauchy",
     "halfnormal",
+    "half_normal",  # Same as halfnormal
     "halfstudent_t",
+    "half_student_t",  # Same as halfstudent_t
     "inverse_gamma",
+    "invgamma",  # Same as gamma
     "lognormal",
+    "log_normal",  # Same as lognormal
     "normal",
+    "gaussian",  # Same as normal
     "pareto",
     "student_t",
     "uniform",
     "weibull",
 ]
-
-_needs_trust_region = [
-    "beta",
-    "cauchy",
-    "gamma",
-    "halfcauchy",
-    "halfnormal",
-    "halfstudent_t",
-    "inverse_gamma",
-    "lognormal",
-    "normal",
-    "student_t",
-    "weibull",
-]
-
-_needs_brents_method = [
-    "beta",
-    "cauchy",
-    "gamma",
-    "halfcauchy",
-    "halfnormal",
-    "halfstudent_t",
-    "inverse_gamma",
-    "lognormal",
-    "normal",
-    "student_t",
-    "weibull",
-]
-
-
-_needed_util_funs = {
-    "bernoulli": [],
-    "beta_binomial": ["lnbeta", "lnchoice", "lnfactorial", "lngamma"],
-    "binomial": ["lnchoice", "lnfactorial"],
-    "categorical": [],
-    "discrete_uniform": [],
-    "geometric": [],
-    "hypergeometric": ["lnchoice", "lnfactorial"],
-    "negative_binomial": ["lngamma", "lnfactorial"],
-    "negative_binomial_mu_phi": ["lngamma", "lnfactorial"],
-    "negative_binomial_r_b": ["lngamma", "lnfactorial"],
-    "poisson": ["lnfactorial"],
-    "beta": [
-        "lngamma",
-        "lnbeta",
-        "regularized_incomplete_beta",
-        "betacf",
-        "log1p",
-        "isone",
-        "iszero",
-    ],
-    "cauchy": [],
-    "exponential": [],
-    "gamma": ["lngamma", "gammainc_u", "gammainc_l"],
-    "halfcauchy": [],
-    "halfnormal": ["erf", "erfinv"],
-    "halfstudent_t": ["lngamma", "log1p", "regularized_incomplete_beta", "betacf"],
-    "inverse_gamma": ["lngamma", "gammainc_u", "gammainc_l"],
-    "lognormal": ["erf", "erfinv"],
-    "normal": ["erf", "erfinv"],
-    "pareto": [],
-    "student_t": ["lngamma", "log1p", "regularized_incomplete_beta", "betacf"],
-    "uniform": [],
-    "weibull": [],
-}
 
 
 def _to_camel_case(input_str):
@@ -113,8 +54,14 @@ def _to_camel_case(input_str):
 def _categorical_pmf(x, theta_1, theta_2, theta_3):
     thetas = np.array([theta_1, theta_2, theta_3, 1 - theta_1 - theta_2 - theta_3])
     if np.any(thetas < 0):
-        return 0.0
-    return thetas[x - 1]
+        return np.nan
+
+    out = np.empty_like(x, dtype=float)
+    inds = np.logical_and(x >= 1, x <= 4)
+    out[inds] = thetas[x[inds] - 1]
+    out[~inds] = np.nan
+
+    return out
 
 
 def _categorical_cdf_indiv(x, thetas):
@@ -201,21 +148,21 @@ def _funs(dist):
             lambda x, alpha, beta: st.gamma.pdf(x, alpha, loc=0, scale=1 / beta),
             lambda x, alpha, beta: st.gamma.cdf(x, alpha, loc=0, scale=1 / beta),
         )
-    elif dist == "halfcauchy":
+    elif dist == "half_cauchy":
         return st.halfcauchy.pdf, st.halfcauchy.cdf
-    elif dist == "halfnormal":
+    elif dist == "half_normal":
         return st.halfnorm.pdf, st.halfnorm.cdf
-    elif dist == "halfstudent_t":
+    elif dist == "half_student_t":
         return st.t.pdf, st.t.cdf
     elif dist == "inverse_gamma":
         return (
             lambda x, alpha, beta: st.invgamma.pdf(x, alpha, loc=0, scale=beta),
             lambda x, alpha, beta: st.invgamma.cdf(x, alpha, loc=0, scale=beta),
         )
-    elif dist == "lognormal":
+    elif dist == "log_normal":
         return (
             lambda x, mu, sigma: st.lognorm.pdf(x, sigma, loc=0, scale=np.exp(mu)),
-            lambda x, mu, sigma: st.lognorm.pdf(x, sigma, loc=0, scale=np.exp(mu)),
+            lambda x, mu, sigma: st.lognorm.cdf(x, sigma, loc=0, scale=np.exp(mu)),
         )
     elif dist == "normal":
         return st.norm.pdf, st.norm.cdf
@@ -257,8 +204,8 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
                 max_value=1,
             )
         ]
-        x_min = 0
-        x_max = 1
+        x_min = -0.2
+        x_max = 1.2
         x_axis_label = "y"
         title = "Bernoulli"
     elif dist == "binomial":
@@ -267,7 +214,7 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
                 name="N",
                 start=1,
                 end=20,
-                value=5,
+                value=20,
                 step=1,
                 is_int=True,
                 min_value=1,
@@ -321,8 +268,8 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
                 max_value=1,
             ),
         ]
-        x_min = 1
-        x_max = 4
+        x_min = 0.75
+        x_max = 4.25
         x_axis_label = "category"
         title = "Categorical"
     elif dist == "discrete_uniform":
@@ -602,7 +549,7 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         x_max = 10
         x_axis_label = "y"
         title = "Gamma"
-    elif dist == "half-cauchy" or dist == "halfcauchy":
+    elif dist == "half-cauchy" or dist == "halfcauchy" or dist == "half_cauchy":
         params = [
             dict(
                 name="µ",
@@ -629,7 +576,7 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         x_max = 4
         x_axis_label = "y"
         title = "Half-Cauchy"
-    elif dist == "half-normal" or dist == "halfnormal":
+    elif dist == "half-normal" or dist == "halfnormal" or dist == "half_normal":
         params = [
             dict(
                 name="µ",
@@ -656,7 +603,7 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         x_max = 4
         x_axis_label = "y"
         title = "Half-Normal"
-    elif dist == "halfstudent_t":
+    elif dist == "halfstudent_t" or dist == "half_student_t":
         params = [
             dict(
                 name="ν",
@@ -693,7 +640,7 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         x_max = 2
         x_axis_label = "y"
         title = "Half-Student-t"
-    elif dist == "inverse_gamma":
+    elif dist == "inverse_gamma" or dist == "invgamma":
         params = [
             dict(
                 name="α",
@@ -720,7 +667,7 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         x_max = 20
         x_axis_label = "y"
         title = "Inverse Gamma"
-    elif dist == "lognormal":
+    elif dist == "lognormal" or dist == "log_normal":
         params = [
             dict(
                 name="µ",
@@ -950,12 +897,53 @@ def _compute_quantile_setter_params(dist, params, ptiles=None):
         x = list(
             st.gamma.ppf(p, params[0]["value"], loc=0, scale=1.0 / params[1]["value"])
         )
+    elif dist == "half_cauchy":
+        p = [0.95] if ptiles is None else list(ptiles)
+        x = list(st.halfcauchy.ppf(p, params[0]["value"], params[1]["value"]))
+    elif dist == "half_normal":
+        p = [0.95] if ptiles is None else list(ptiles)
+        x = list(st.halfnorm.ppf(p, params[0]["value"], params[1]["value"]))
+    elif dist == "half_student_t":
+        p = [0.95] if ptiles is None else list(ptiles)
+        x = list(
+            st.halfnorm.ppf(
+                [(1 + p_val) / 2 for p_val in p], params[0]["value"], params[1]["value"]
+            )
+        )
+    elif dist == "inverse_gamma":
+        p = [0.025, 0.975] if ptiles is None else list(ptiles)
+        x = list(
+            st.invgamma.ppf(p, params[0]["value"], loc=0, scale=params[1]["value"])
+        )
+    elif dist == "log_normal":
+        p = [0.025, 0.975] if ptiles is None else list(ptiles)
+        x = list(
+            st.lognorm.ppf(
+                p, params[1]["value"], loc=0, scale=np.exp(params[1]["value"])
+            )
+        )
+    elif dist == "normal":
+        p = [0.025, 0.975] if ptiles is None else list(ptiles)
+        x = list(st.norm.ppf(p, params[0]["value"], params[1]["value"]))
+    elif dist == "pareto":
+        p = [0.025, 0.975] if ptiles is None else list(ptiles)
+        x = list(st.pareto.ppf(p, params[1]["value"], scale=params[0]["value"]))
+    elif dist == "student_t":
+        p = [0.025, 0.975] if ptiles is None else list(ptiles)
+        x = list(
+            st.t.ppf(p, params[0]["value"], params[1]["value"], params[2]["value"])
+        )
     elif dist == "uniform":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = [
             (1 - p[0]) * params[0]["value"] + p[0] * params[1]["value"],
             (1 - p[1]) * params[0]["value"] + p[1] * params[1]["value"],
         ]
+    elif dist == "weibull":
+        p = [0.025, 0.975] if ptiles is None else list(ptiles)
+        x = list(
+            st.weibull_min.ppf(p, params[0]["value"], loc=0, scale=params[1]["value"])
+        )
 
     return x, p
 
@@ -1019,6 +1007,16 @@ def explore(
 
     if dist == "gaussian":
         dist = "normal"
+    if dist == "invgamma":
+        dist = "inverse_gamma"
+    if dist == "lognormal":
+        dist = "log_normal"
+    if dist == "halfnormal":
+        dist = "half_normal"
+    if dist == "halfcauchy":
+        dist = "half_cauchy"
+    if dist == "halfstudent_t":
+        dist = "half_student_t"
 
     # Name of JS class containing dist
     distjs = f"{_to_camel_case(dist)}Distribution"
@@ -1060,6 +1058,10 @@ def explore(
     else:
         p_y_axis_label = "PDF"
 
+    # Lock axes for Bernoulli and Categorical
+    if dist in ['bernoulli', 'categorical'] and 'tools' not in kwargs:
+        kwargs['tools'] = "save"
+
     p_p = bokeh.plotting.figure(
         x_axis_label=x_axis_label,
         y_axis_label=p_y_axis_label,
@@ -1075,11 +1077,32 @@ def explore(
         **kwargs,
     )
 
+    # Style axis lables
+    p_p.yaxis.axis_label_text_font_style = "normal"
+    p_c.yaxis.axis_label_text_font_style = "normal"
+
     # Explicitly set x-range
     p_p.x_range = bokeh.models.Range1d(x_min, x_max)
 
     # Link the axes
     p_c.x_range = p_p.x_range
+
+    # For a Beta or uniform distribution, we want to force zero for PDF axis
+    # to give appropriate scale
+    if dist in ("beta", "uniform"):
+        p_p.y_range.start = 0.0
+
+    # For Bernoulli and Categorical, explicitly set p_p y_range
+    if dist in ('bernoulli', 'categorical'):
+        p_p.y_range = bokeh.models.Range1d(-0.04, 1.04)
+
+    # Explicity tickers for Bernoulli and Categorical
+    if dist == 'bernoulli':
+        p_p.xaxis.ticker = [0, 1]
+        p_c.xaxis.ticker = [0, 1]
+    if dist == "categorical":
+        p_p.xaxis.ticker = [1, 2, 3, 4]
+        p_c.xaxis.ticker = [1, 2, 3, 4]
 
     # Make sure CDF y_range is zero to one
     p_c.y_range = bokeh.models.Range1d(-0.04, 1.04)
@@ -1089,7 +1112,7 @@ def explore(
 
     # Set up data for plot
     if discrete:
-        x = np.arange(int(np.ceil(x_min)), int(np.floor(x_max)) + 1)
+        x = np.arange(int(np.floor(x_min)), int(np.ceil(x_max)) + 1)
         x_size = x[-1] - x[0]
         x_c = np.empty(2 * len(x))
         x_c[::2] = x
@@ -1134,11 +1157,6 @@ def explore(
     # p_p.x_range.range_padding = 0
     # p_c.x_range.range_padding = 0
 
-    # For a Beta or uniform distribution, we want to force zero for PDF axis
-    # To give appropriate scale
-    if dist in ("beta", "uniform"):
-        p_p.y_range.start = 0.0
-
     # Sliders
     sliders = [
         bokeh.models.Slider(
@@ -1166,13 +1184,13 @@ def explore(
     # Quantile setter text boxes
     x_boxes = [
         bokeh.models.TextInput(
-            value=str("{0:.4f}".format(x_val)), width=70, disabled=True
+            value=str("{0:.4f}".format(x_val)), width=80, disabled=True
         )
         for x_val in x_quantset
     ]
     p_boxes = [
         bokeh.models.TextInput(
-            value=str("{0:.4f}".format(p_val)), width=70, disabled=True
+            value=str("{0:.4f}".format(p_val)), width=80, disabled=True
         )
         for p_val in p_quantset
     ]
@@ -1304,9 +1322,8 @@ def explore(
         slider.js_on_change("value", callback)
 
     # Link callback upon changing x-axis ranges
-    if dist not in ["bernoulli", "categorical"]:
-        p_p.x_range.js_on_change("start", callback)
-        p_p.x_range.js_on_change("end", callback)
+    p_p.x_range.js_on_change("start", callback)
+    p_p.x_range.js_on_change("end", callback)
 
     # Link quantile setters switch
     quantile_setter_switch.js_on_change("active", quantile_setter_switch_callback)
@@ -1317,8 +1334,9 @@ def explore(
     for p_box in p_boxes:
         p_box.js_on_change("value", quantile_setter_callback)
 
-    # Link callbacks to reset button
-    p_c.js_on_event(bokeh.events.Reset, reset_button_callback)
+    # Link callbacks to reset button (not for Bernoulli and Categorical)
+    if dist not in ['bernoulli', 'categorical']:
+        p_c.js_on_event(bokeh.events.Reset, reset_button_callback)
 
     # Layout with label for switch
     quantile_setter_switch_with_label = bokeh.layouts.row(
@@ -1332,12 +1350,18 @@ def explore(
         quantile_setter_text_boxes = bokeh.layouts.layout(
             [
                 [
-                    bokeh.models.Spacer(width=50),
-                    bokeh.models.Div(text="<p><b>quantile: </b></p>"),
-                    p_boxes[0],
                     bokeh.models.Spacer(width=20),
-                    bokeh.models.Div(text=f"<p><b>{x_axis_label}: </b></p>"),
+                    bokeh.layouts.column(
+                        bokeh.models.Spacer(height=7),
+                        bokeh.models.Div(text=f"<p><b>{x_axis_label}: </b></p>"),
+                    ),
                     x_boxes[0],
+                    bokeh.models.Spacer(width=16),
+                    bokeh.layouts.column(
+                        bokeh.models.Spacer(height=7),
+                        bokeh.models.Div(text="<p><b>quantile: </b></p>"),
+                    ),
+                    p_boxes[0],
                 ]
             ]
         )
@@ -1346,19 +1370,31 @@ def explore(
             [
                 [
                     bokeh.models.Spacer(width=20),
-                    bokeh.models.Div(text="<p><b>lower quantile: </b></p>"),
-                    p_boxes[0],
-                    bokeh.models.Spacer(width=30),
-                    bokeh.models.Div(text=f"<p><b>lower {x_axis_label}: </b></p>"),
+                    bokeh.layouts.column(
+                        bokeh.models.Spacer(height=7),
+                        bokeh.models.Div(text=f"<p><b>lower {x_axis_label}: </b></p>"),
+                    ),
                     x_boxes[0],
+                    bokeh.models.Spacer(width=34),
+                    bokeh.layouts.column(
+                        bokeh.models.Spacer(height=7),
+                        bokeh.models.Div(text=f"<p><b>upper {x_axis_label}: </b></p>"),
+                    ),
+                    x_boxes[1],
                 ],
                 [
-                    bokeh.models.Spacer(width=28),
-                    bokeh.models.Div(text="<p><b>upper quantile: </b></p>"),
+                    bokeh.models.Spacer(width=16),
+                    bokeh.layouts.column(
+                        bokeh.models.Spacer(height=7),
+                        bokeh.models.Div(text="<p><b>quantile: </b></p>"),
+                    ),
+                    p_boxes[0],
+                    bokeh.models.Spacer(width=30),
+                    bokeh.layouts.column(
+                        bokeh.models.Spacer(height=7),
+                        bokeh.models.Div(text="<p><b>quantile: </b></p>"),
+                    ),
                     p_boxes[1],
-                    bokeh.models.Spacer(width=18),
-                    bokeh.models.Div(text=f"<p><b>upper {x_axis_label}: </b></p>"),
-                    x_boxes[1],
                 ],
             ]
         )
@@ -1366,28 +1402,46 @@ def explore(
         quantile_setter_text_boxes = bokeh.layouts.layout(
             [
                 [
-                    bokeh.models.Spacer(width=30),
-                    bokeh.models.Div(text="<p><b>lower quantile: </b></p>"),
-                    p_boxes[0],
-                    bokeh.models.Spacer(width=20),
-                    bokeh.models.Div(text=f"<p><b>lower {x_axis_label}: </b></p>"),
-                    x_boxes[0],
+                    bokeh.models.Spacer(width=28),
+                    bokeh.layouts.column(
+                        bokeh.models.Spacer(height=7),
+                        bokeh.models.Div(text="<p><b>upper quantile: </b></p>"),
+                    ),
+                    p_boxes[2],
+                    bokeh.models.Spacer(width=18),
+                    bokeh.layouts.column(
+                        bokeh.models.Spacer(height=7),
+                        bokeh.models.Div(text=f"<p><b>upper {x_axis_label}: </b></p>"),
+                    ),
+                    x_boxes[2],
                 ],
                 [
                     bokeh.models.Spacer(width=25),
-                    bokeh.models.Div(text="<p><b>middle quantile: </b></p>"),
+                    bokeh.layouts.column(
+                        bokeh.models.Spacer(height=7),
+                        bokeh.models.Div(text="<p><b>middle quantile: </b></p>"),
+                    ),
                     p_boxes[1],
                     bokeh.models.Spacer(width=15),
-                    bokeh.models.Div(text=f"<p><b>middle {x_axis_label}: </b></p>"),
+                    bokeh.layouts.column(
+                        bokeh.models.Spacer(height=7),
+                        bokeh.models.Div(text=f"<p><b>middle {x_axis_label}: </b></p>"),
+                    ),
                     x_boxes[1],
                 ],
                 [
-                    bokeh.models.Spacer(width=28),
-                    bokeh.models.Div(text="<p><b>upper quantile: </b></p>"),
-                    p_boxes[2],
-                    bokeh.models.Spacer(width=18),
-                    bokeh.models.Div(text=f"<p><b>upper {x_axis_label}: </b></p>"),
-                    x_boxes[2],
+                    bokeh.models.Spacer(width=30),
+                    bokeh.layouts.column(
+                        bokeh.models.Spacer(height=7),
+                        bokeh.models.Div(text="<p><b>lower quantile: </b></p>"),
+                    ),
+                    p_boxes[0],
+                    bokeh.models.Spacer(width=20),
+                    bokeh.layouts.column(
+                        bokeh.models.Spacer(height=7),
+                        bokeh.models.Div(text=f"<p><b>lower {x_axis_label}: </b></p>"),
+                    ),
+                    x_boxes[0],
                 ],
             ]
         )
@@ -1395,7 +1449,11 @@ def explore(
     # Layout of sliders with text boxes
     widgets = bokeh.layouts.layout(
         [
-            [start, slider, end]
+            [
+                bokeh.layouts.column(bokeh.models.Spacer(height=4), start),
+                slider,
+                bokeh.layouts.column(bokeh.models.Spacer(height=4), end),
+            ]
             for start, slider, end in zip(start_boxes, sliders, end_boxes)
         ]
     )
@@ -1411,7 +1469,7 @@ def explore(
     if len(x_boxes) > 0:
         return_layout = bokeh.layouts.column(
             bokeh.layouts.row(
-                bokeh.models.Spacer(width=420),
+                bokeh.models.Spacer(width=409),
                 quantile_setter_switch_with_label,
                 bokeh.models.Spacer(width=10),
                 quantile_setter_div,
