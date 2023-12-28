@@ -110,8 +110,8 @@ def _callback_class_and_function_dicts():
         "quantile_setter_switch_callback",
         "quantile_setter_callback",
         "reset_button_callback",
-        "continuous_callback",
-        "discrete_callback",
+        "slider_callback",
+        "xaxis_change_callback",
     ]:
         output_dict[fname] = _read_js_code(f"{fname}.js")
 
@@ -133,8 +133,13 @@ def _dependencies(code_dict):
             if g + "(" in code_dict[f] and g != f:
                 output[f].append(g)
 
-    # One manual one: Trust region uses jacCentralDiff
+    # A manual one: Trust region uses jacCentralDiff
     output["findRootTrustRegion"].append("jacCentralDiff")
+
+    # Another manual one, the superclasses for different parametrizations of
+    # the Negative Binomial
+    output["NegativeBinomialMuPhiDistribution"].append('NegativeBinomialDistribution')
+    output["NegativeBinomialRBDistribution"].append('NegativeBinomialDistribution')
 
     # Add in super classes for distributions
     for f, code in code_dict.items():
@@ -156,9 +161,15 @@ def _dependencies(code_dict):
                         output[f].append(h)
                         n_added += 1
 
-    # For each set of dependencies, make sure UnivariateDistribution and/or
-    # ContinuousUnivariateDistribution and/or DicreteUnivariateDistribution for first
+    # For each set of dependencies, make sure superclass, especially
+    # UnivariateDistribution and/or ContinuousUnivariateDistribution and/or
+    # DiscreteUnivariateDistribution are first
     for f in output:
+        # Special case where NegativeBinomial is a superclass
+        if 'NegativeBinomialDistribution' in output[f]:
+            output[f].insert(
+                0, output[f].pop(output[f].index('NegativeBinomialDistribution'))
+            )
         if "DiscreteUnivariateDistribution" in output[f]:
             output[f].insert(
                 0, output[f].pop(output[f].index("DiscreteUnivariateDistribution"))

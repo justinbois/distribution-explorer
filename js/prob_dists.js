@@ -9,10 +9,13 @@ class UnivariateDistribution {
 
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
+
+    // Small number for nudging parameters
+    this.epsilon = 1.0e-8
   }
 
   generateActiveFixedInds() {
-    // Generate indices of active and fixed inidices for quantile setting
+    // Generate indices of active and fixed indices for quantile setting
     this.activeParamsInds = [];
     this.fixedParamsInds = []
     for (let i = 0; i < this.paramNames.length; i++) {
@@ -264,6 +267,9 @@ class TemplateDiscreteUnivariateDistribution extends DiscreteUnivariateDistribut
   //   cdfSingleValue(x, params, xMin)
   //   ppfSingleValue(p, params, xMin, xMax, p1Value)
   //
+  // Note that cdfSingleValue will *not* be used to compute the CDF for plotting. That is
+  // done from the PMF, which is usually more efficient. The cdfSingleValue is really only
+  // used in quantile setting.
   // You should not respecify cdf, pmf, ppf; only specify the calculations for a single value.
 }
 
@@ -375,6 +381,16 @@ class BernoulliDistribution extends DiscreteUnivariateDistribution {
     return [-0.2, 1.2];
   }
 
+  quantileSet(x, p, extraParams) {
+    let x1 = x[0];
+    let p1 = p[0];
+
+    if (x1 != 0) {
+      throw new Error(this.varName + ' must be zero.')
+    }
+
+    return [[1 - p1], true];
+  }
 }
 
 
@@ -485,6 +501,14 @@ class BinomialDistribution extends DiscreteUnivariateDistribution {
       (N - n) * Math.log(1 - theta));
   }
 
+  cdfSingleValue(n, params) {
+    let [N, theta] = params.slice(0, 2);
+
+    if (n < 0) return 0.0;
+    if (n >= N) return 1.0;
+    return regularizedIncompleteBeta(1.0 - theta, N - n, n + 1);
+  }
+
   ppfSingleValue(p, params) {
     let [N, theta] = params.slice(0, 2);
     
@@ -499,6 +523,30 @@ class BinomialDistribution extends DiscreteUnivariateDistribution {
     } else {
       return this.ppf([0.001, 0.999], params);
     }
+  }
+
+  quantileSet(x, p, extraParams) {
+    let x1 = x[0];
+    let p1 = p[0];
+    let N = extraParams[0];
+
+    if (!Number.isInteger(x1)) {
+      throw new Error(this.varName + ' must be integer.')
+    }
+    if (x1 < 0) {
+      throw new Error('Must have ' + this.varName + ' > 0.')
+    }
+    if (x1 >= N) {
+      throw new Error('Must have ' + this.varName + ' < N.')
+    }
+
+    // Root finding function for quantile
+    let rootFun = (theta, N) => p1 - this.cdfSingleValue(x1, [N, theta]);
+
+    let thetaOpt = brentSolve(rootFun, 0.0, 1.0, [N]);
+    let optimSuccess = thetaOpt != null;
+    
+    return [[thetaOpt], optimSuccess];
   }
 }
 
@@ -677,6 +725,15 @@ class GeometricDistribution extends DiscreteUnivariateDistribution {
     return Math.exp(x * Math.log(1.0 - theta) + Math.log(theta));
   }
 
+  cdfSingleValue(x, params) {
+    if (x < 0) return 0.0;
+    if (x === Infinity) return 1.0;
+
+    let theta = params[0];
+
+    return 1.0 - Math.pow(1.0 - theta, x + 1.0);
+  }
+
   ppfSingleValue(p, params) {
     let theta = params[0];
 
@@ -693,6 +750,20 @@ class GeometricDistribution extends DiscreteUnivariateDistribution {
     let theta = params[0];
 
     return [-1, this.ppfSingleValue(0.999, params)];
+  }
+
+  quantileSet(x, p) {
+    let x1 = x[0];
+    let p1 = p[0];
+
+    if (!Number.isInteger(x1)) {
+      throw new Error(this.varName + ' must be integer.')
+    }
+    if (x1 < 0) {
+      throw new Error('Must have ' + this.varName + ' > 0.')
+    }
+
+    return [[1.0 - Math.pow(1.0 - p1, 1.0 / (x1 + 1.0))], true];
   }
 
 }
@@ -724,16 +795,17 @@ class HypergeometricDistribution extends DiscreteUnivariateDistribution {
   }
 
   xMin(params) {
-    let [N, a, b] = params.slice(0, 2);
+    let [N, a, b] = params.slice(0, 3);
     return Math.max(0, N - b);
   }
 
   xMax(params) {
+    let [N, a, b] = params.slice(0, 3);
     return Math.min(N, a);
   }
 
   pmfSingleValue(n, params) {
-    let [N, a, b] = params.slice(0, 2);
+    let [N, a, b] = params.slice(0, 3);
 
     if (n < Math.max(0, N - b) || n > Math.min(N, a)) return NaN;
 
@@ -741,13 +813,11 @@ class HypergeometricDistribution extends DiscreteUnivariateDistribution {
   }
 
   ppfSingleValue(p, params) {
-    let [N, alpha, beta] = params.slice(0, 3);
-
     return super.ppfSingleValue(p, params, this.xMin(params), this.xMax(params), this.xMax(params));
   }
 
   defaultXRange(params) {
-    let [N, alpha, beta] = params.slice(0, 3);
+    let [N, a, b] = params.slice(0, 3);
 
     return [Math.max(0, N - b) - 1, Math.min(N, a) + 1];
   }
@@ -779,9 +849,11 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
       this.paramNames = ['α', 'β'];
     } else if (this.parametrization === 'mu-phi') {
       this.paramNames = ['µ', 'φ'];
+    } else if (this.parametrization === 'alpha-p') {
+      this.paramNames = ['α', 'p'];
     } else if (this.parametrization === 'r-b') {
       this.paramNames = ['r', 'b'];
-    } else { // Some other, probably invalue parameters
+    } else { // Some other, probably invalid parameters
       this.paramNames = ['unnamedParam1', 'unnamedParam2'];
     }
 
@@ -800,46 +872,148 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
     return Infinity;
   }
 
+  convertParams(params) {
+    // Convert parameters to alpha-beta form.
+    let alpha, beta;
+
+    if (this.parametrization === 'mu-phi') {
+      let [mu, phi] = params.slice(0, 2);
+      alpha = phi;
+      beta = alpha / mu;
+    } else if (this.parametrization === 'alpha-p') {
+      let [a, p] = params.slice(0, 2);
+      alpha = a;
+      beta = p / (1 - p);
+    } else if (this.parametrization === 'r-b') {
+      let [r, b] = params.slice(0, 2);
+      alpha = r;
+      beta = 1 / b;
+    } else {
+      [alpha, beta] = params.slice(0, 2);
+    }
+
+    return [alpha, beta];
+  }
+
   pmfSingleValue(y, params) {
     if (y < 0) return NaN;
 
-    if (this.parametrization === 'alpha-beta') {
-      let [alpha, beta] = params.slice(0, 2);
+    // Grab parameters in alpha-beta form
+    let [alpha, beta] = this.convertParams(params);
 
-      if (alpha <= 0 || beta <= 0) return NaN;
+    if (alpha <= 0 || beta <= 0) return NaN;
 
-      return Math.exp(lngamma(y + alpha)
-                      - lngamma(alpha)
-                      - lnfactorial(y)
-                      + alpha * Math.log(beta / (1 + beta))
-                      - y * Math.log(1 + beta));
-    } else if (this.parametrization === 'mu-phi') {
-      let [mu, phi] = params.slice(0, 2);
-      
-      if (mu <= 0 || phi <= 0) return NaN;
+    return Math.exp(lngamma(y + alpha)
+                    - lngamma(alpha)
+                    - lnfactorial(y)
+                    + alpha * Math.log(beta / (1 + beta))
+                    - y * Math.log(1 + beta));
+  }
 
-      let logMuPhi = Math.log(mu + phi);
+  cdfSingleValue(y, params) {
+    let [alpha, beta] = this.convertParams(params);
 
-      return Math.exp(lngamma(y + phi)
-                      - lngamma(phi)
-                      - lnfactorial(y)
-                      + phi * (Math.log(phi) - logMuPhi)
-                      + y * (Math.log(mu) - logMuPhi));
-    } else if (this.parametrization === 'r-b') {
-      let [r, b] = params.slice(0, 2);
-      
-      if (r <= 0 || b <= 0) return NaN;
+    if (y <= 0) return 0.0;
+    if (y === Infinity) return 1.0;
 
-      return Math.exp(lngamma(y + r)
-                      - lngamma(r)
-                      - lnfactorial(y)
-                      + r * Math.log(1 / (1 + b))
-                      - y * Math.log(1 + 1 / b));
-    }
+    return regularizedIncompleteBeta(beta / (1 + beta), alpha, y + 1);
   }
 
   defaultXRange(params) {
-    return super.ppf([0.001, 0.999], params)
+    let convertedParams = this.convertParams(params);
+
+    let [x1, x2] = super.ppf([0.001, 0.999], convertedParams);
+
+    // If lower bound is within 10% of the range of bounds to zero, make it zero
+    if (x1 < (x2 - x1) / 10.0) x1 = -1.0;
+
+    return [x1, x2];
+  }
+
+  quantileSet(x, p) {
+    let [x1, x2] = x.slice(0, 2);
+    let [p1, p2] = p.slice(0, 2);
+
+    if (!Number.isInteger(x1) || !Number.isInteger(x2)) {
+      throw new Error(this.varName + ' must be integer.')
+    }
+    if (x1 < 0 || x2 < 0) {
+      throw new Error('Must have ' + this.varName + ' > 0.')
+    }
+
+    // Root finding function using log parameters to enforce positivity
+    const quantileRootFun = (params, x1, p1, x2, p2) => {
+      let alpha = Math.exp(params[0]);
+      let beta = Math.exp(params[1]);
+
+      let r1 = this.cdfSingleValue(x1, [alpha, beta]) - p1;
+      let r2 = this.cdfSingleValue(x2, [alpha, beta]) - p2;
+
+      return [r1, r2];
+    };
+
+    // Grid up guesses to find good initial guess
+    let logalphaGuesses = linspace(-14, 10, 10);
+    let logbetaGuesses = linspace(-14, 10, 10);
+    let [logalphaGrid, logbetaGrid] = meshgrid(logalphaGuesses, logbetaGuesses);
+
+    // Evaluate function at each grid point and find smallest one
+    // Alternatively, can choose guess = [0.0, 0.0], but does not always converge.
+    // let fNorm = Infinity;
+    // let newfNorm;
+    // let guess;
+    // for (let i = 0; i < logalphaGrid.length; i++) {
+    //   for (let j = 0; j < logalphaGrid[i].length; j++) {
+    //     newfNorm = norm(quantileRootFun([logalphaGrid[i][j], logbetaGrid[i][j]], x1, p1, x2, p2));
+    //     if (newfNorm < fNorm) {
+    //       fNorm = newfNorm;
+    //       guess = [logalphaGrid[i][j], logbetaGrid[i][j]];
+    //     }
+    //   }
+    // }
+
+    let args = [x1, p1, x2, p2];
+    let guess = [Math.log(151.3), Math.log(15.69)];
+
+    let paramsOpt = [Math.exp(guess[0]), Math.exp(guess[1])];
+    let [logParams, optimSuccess] = findRootTrustRegion(quantileRootFun, guess, args=args);
+
+    if (optimSuccess) {
+      let alphaOpt = Math.exp(logParams[0]);
+      let betaOpt = Math.exp(logParams[1]);
+
+      if (this.parametrization === 'mu-phi') {
+        paramsOpt = [alphaOpt, alphaOpt / betaOpt];
+      } else if (this.parametrization === 'alpha-p') {
+        paramsOpt = [alphaOpt, betaOpt / (1 + betaOpt)];
+      } else if (this.parametrization === 'r-b') {
+        paramsOpt = [alphaOpt, 1 / betaOpt];
+      } else {
+        paramsOpt = [alphaOpt, betaOpt];
+      } 
+    }
+
+    return [paramsOpt, optimSuccess];
+
+  //   let paramsOpt = [Math.exp(guess[0]), Math.exp(guess[1])];
+  //   if (optimSuccess) {
+  //     let alphaOpt = Math.exp(logParams[0]);
+  //     let betaOpt = Math.exp(logParams[1]);
+
+  //     if (this.parametrization === 'mu-phi') {
+  //       paramsOpt = [alphaOpt, alphaOpt / betaOpt];
+  //     } else if (this.parametrization === 'alpha-p') {
+  //       paramsOpt = [alphaOpt, betaOpt / (1 + betaOpt)];
+  //     } else if (this.parametrization === 'r-b') {
+  //       paramsOpt = [alphaOpt, 1 / betaOpt];
+  //     } else {
+  //       paramsOpt = [alphaOpt, betaOpt];
+  //     } 
+  //   } else if (x2 - x1 < 20) {
+
+  //   }
+
+  //   return [paramsOpt, optimSuccess];
   }
 
 }
@@ -851,6 +1025,12 @@ class NegativeBinomialMuPhiDistribution extends NegativeBinomialDistribution {
   }
 }
 
+
+class NegativeBinomialAlphaPDistribution extends NegativeBinomialDistribution {
+  constructor() {
+    super('alpha-p');
+  }
+}
 
 class NegativeBinomialRBDistribution extends NegativeBinomialDistribution {
   constructor() {
@@ -904,8 +1084,45 @@ class PoissonDistribution extends DiscreteUnivariateDistribution {
     return Math.exp(n * Math.log(lam) - lnfactorial(n) - lam);
   }
 
+  cdfSingleValue(n, params) {
+    if (n < 0) return 0.0;
+    if (n === Infinity) return 1.0;
+
+    let lam = params[0];
+
+    if (lam === 0) return 1.0;
+
+    return gammaincU(lam, n + 1, true);
+  }
+
   defaultXRange(params) {
     return super.ppf([0.001, 0.999], params)
+  }
+
+  quantileSet(x, p) {
+    let x1 = x[0];
+    let p1 = p[0];
+
+    if (!Number.isInteger(x1)) {
+      throw new Error(this.varName + ' must be integer.')
+    }
+    if (x1 < 0) {
+      throw new Error('Must have ' + this.varName + ' ≥ 0.')
+    }
+
+    // Know it exactly for p1 = 1 and x1 = 0, lambda has to be zero.
+    if (x1 === 0 && p1 === 1) return [[0.0], true];
+
+    // Root finding function for quantile using transformation to maintain positivity
+    let rootFun = (xi) => {
+      if (xi === 1) return p1;
+      return p1 - this.cdfSingleValue(x1, [xi / (1 - xi)]);
+    }
+
+    let xiOpt = brentSolve(rootFun, 0.0, 1.0);
+    let optimSuccess = xiOpt != null;
+    
+    return [[xiOpt / (1 - xiOpt)], optimSuccess];
   }
 
 }
@@ -1157,7 +1374,15 @@ class ExponentialDistribution extends ContinuousUnivariateDistribution {
     let x1 = x[0];
     let p1 = p[0];
 
-    return [[-Math.log(1.0 - p1) / x1], true];
+    let betaOptim;
+    if (x1 == 0 || p1 == 1) {
+      betaOptim = Infinity;
+    }
+    else {
+      betaOptim = -Math.log(1.0 - p1) / x1
+    }
+
+    return [[betaOptim], true];
   }
 
   defaultXRange(params) {
@@ -1298,26 +1523,6 @@ class GammaDistribution extends ContinuousUnivariateDistribution {
     };
 
     let args = [x1Rescaled, p1, x2Rescaled, p2];
-
-    // Another option is to grid up guesses to get good initial guess.
-    // // Grid up guesses
-    // let alphaGuesses = linspace(-14, 10, 100);
-    // let betaGuesses = linspace(-14, 10, 100);
-    // let [alphaGrid, betaGrid] = meshgrid(alphaGuesses, betaGuesses);
-
-    // // Evaluate function at each grid point and find smallest one
-    // let fNorm = Infinity;
-    // let newfNorm;
-    // let guess;
-    // for (let i = 0; i < alphaGrid.length; i++) {
-    //   for (let j = 0; j < alphaGrid[i].length; j++) {
-    //     newfNorm = norm(quantileRootFun([alphaGrid[i][j], betaGrid[i][j]], x1, p1, x2, p2));
-    //     if (newfNorm < fNorm) {
-    //       fNorm = newfNorm;
-    //       guess = [alphaGrid[i][j], betaGrid[i][j]];
-    //     }
-    //   }
-    // }
 
     let guess = [0.75, 0.75];
 

@@ -320,78 +320,83 @@ function lngamma(z) {
 
 
 function gammaincU(x, s, regularized) {
-    // Adapted from Compute.io package
-    var EPSILON = 1e-12;
+  // Upper incomplete gamma function. Note that the order of the arguments,
+  // x and s, are switched from common usage, e.g., on the Wikipedia page.
+  // Adapted from Compute.io package
+  var EPSILON = 1e-12;
 
-    if (x <= 1.1 || x <= s) {
-        if (regularized !== false) {
-            return 1 - gammaincL(x, s, regularized);
-        } else {
-            return Math.exp(lngamma(s)) - gammaincL(x, s, regularized);
-        }
-    }
-
-    var f = 1 + x - s,
-        C = f,
-        D = 0,
-        i = 1,
-        a, b, chg;
-    for (i = 1; i < 10000; i++) {
-        a = i * (s - i);
-        b = (i<<1) + 1 + x - s;
-        D = b + a * D;
-        C = b + a / C;
-        D = 1 / D;
-        chg = C * D;
-        f *= chg;
-        if (Math.abs(chg - 1) < EPSILON) {
-            break;
-        }
-    }
+  if (x <= 1.1 || x <= s) {
     if (regularized !== false) {
-        return Math.exp(s * Math.log(x) - x - lngamma(s) - Math.log(f));
+      return 1 - gammaincL(x, s, regularized);
     } else {
-        return Math.exp(s * Math.log(x) - x - Math.log(f));
+      return Math.exp(lngamma(s)) - gammaincL(x, s, regularized);
     }
+  }
+
+  var f = 1 + x - s,
+    C = f,
+    D = 0,
+    i = 1,
+    a, b, chg;
+  for (i = 1; i < 10000; i++) {
+    a = i * (s - i);
+    b = (i<<1) + 1 + x - s;
+    D = b + a * D;
+    C = b + a / C;
+    D = 1 / D;
+    chg = C * D;
+    f *= chg;
+    if (Math.abs(chg - 1) < EPSILON) {
+      break;
+    }
+  }
+  if (regularized !== false) {
+    return Math.exp(s * Math.log(x) - x - lngamma(s) - Math.log(f));
+  } else {
+    return Math.exp(s * Math.log(x) - x - Math.log(f));
+  }
 }
 
 
 function gammaincL(x, s, regularized) {
-    // Adapted from Compute.io package
-    var EPSILON = 1e-12;
+  // Lower incomplete gamma function. Note that the order of the arguments,
+  // x and s, are switched from common usage, e.g., on the Wikipedia page.
+  // Adapted from Compute.io package
+  var EPSILON = 1e-12;
 
-    if (x === 0) {
-        return 0;
-    }
-    if (x < 0 || s <= 0) {
-        return NaN;
-    }
+  if (x === 0) {
+    return 0;
+  }
+  if (x < 0 || s <= 0) {
+    return NaN;
+  }
 
-    if(x > 1.1 && x > s) {
-        if (regularized !== false) {
-            return 1 - gammaincU(x, s, regularized);
-        } else {
-            return Math.exp(lngamma(s)) - gammaincU(x, s, regularized);
-        }
-    }
-
-    var ft,
-        r = s,
-        c = 1,
-        pws = 1;
-
+  if (x > 1.1 && x > s) {
     if (regularized !== false) {
-        ft = s * Math.log(x) - x - lngamma(s);
+      return 1 - gammaincU(x, s, regularized);
     } else {
-        ft = s * Math.log(x) - x;
+      return Math.exp(lngamma(s)) - gammaincU(x, s, regularized);
     }
-    ft = Math.exp(ft);
-    do {
-        r += 1;
-        c *= x/r;
-        pws += c;
-    } while (c / pws > EPSILON);
-    return pws*ft/s;
+  }
+
+  var ft,
+    r = s,
+    c = 1,
+    pws = 1;
+
+  if (regularized !== false) {
+    ft = s * Math.log(x) - x - lngamma(s);
+  } else {
+    ft = s * Math.log(x) - x;
+  }
+  ft = Math.exp(ft);
+  do {
+    r += 1;
+    c *= x/r;
+    pws += c;
+  } while (c / pws > EPSILON);
+
+  return pws * ft / s;
 }
 
 

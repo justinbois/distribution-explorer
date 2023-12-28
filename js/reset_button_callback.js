@@ -9,12 +9,19 @@ let params = paramsFromSliders(sliders);
 // Obtain limits of x-axis
 let [x1, x2] = dist.defaultXRange(params);
 
-// Set the new x_range if it changed. This will trigger recalculation of PDF/PMF and CDF
-// via the callback linked to the x_range.
-if (p_p.x_range.start != x1 && p_p.x_range.end != x2) {
-  p_p.x_range.start = x1;
-  p_p.x_range.end = x2;
-}
+// Do not trigger xaxis callback
+triggerCallbacks.active = false;
+
+// Set the new x_range.
+p_p.x_range.start = x1;
+p_p.x_range.end = x2;
+
+updateData(source_p, source_c, p_p, sliders, discrete);
 
 // Set y-ranges to the defaults
 setYRanges(p_p, p_c, source_p);  
+
+// Turn triggers back on (This strategy may not even work, since the xaxis callback is listening
+// for a change, and the switching off and on of the triggerCallback switch may happed faster than
+// the refresh rate.)
+triggerCallbacks.active = true;

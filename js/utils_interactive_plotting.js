@@ -91,3 +91,168 @@ function checkQuantileInput(x, p, xMin, xMax, varName, quantileSetterDiv) {
 
     return true;
 }
+
+
+function updateContinuousPDFandCDF(source_p, source_c, xRange, sliders) {
+  // Extract data from sources
+  let x_p = source_p.data['x'];
+  let y_p = source_p.data['y_p'];
+  let x_c = source_c.data['x'];
+  let y_c = source_c.data['y_c'];
+  let xRangeMin = xRange.start;
+  let xRangeMax = xRange.end;
+
+  // x-values to evaluate PDF and CDF
+  x_p = linspace(xRangeMin, xRangeMax, n);
+  x_c = x_p;
+
+  // Update sources with new x-values
+  source_p.data['x'] = x_p;
+  source_c.data['x'] = x_c;
+
+  // Obtain parameter values
+  let params = paramsFromSliders(sliders);
+
+  // Compute PDF
+  let pdf = dist.pdf(x_p, params);
+
+  // Convert Infinity's to NaN's for plotting
+  pdf = pdf.map(val => (val === Infinity || val === -Infinity) ? NaN : val);
+
+  // Update the PDF and CDF
+  source_p.data['y_p'] = pdf;
+  source_c.data['y_c'] = dist.cdf(x_c, params);
+
+  source_p.change.emit();
+  source_c.change.emit();
+}
+
+
+function updateDiscretePMFandCDF(source_p, source_c, xRange, sliders) {
+  // Extract data range
+  let xRangeMin = Math.floor(xRange.start);
+  let xRangeMax = Math.ceil(xRange.end);
+
+  // x-values to evaluate PMF and CDF
+  let x_p = arange(xRangeMin, xRangeMax + 1);
+
+  // Set up x-values for plotting the staircase CDF
+  let x_c = [xRangeMin - 1, ...x_p.flatMap(x => [x, x]), xRangeMax + 1];
+
+  // Update sources with new x-values
+  source_p.data['x'] = x_p;
+  source_c.data['x'] = x_c;
+
+  // Obtain parameter values
+  let params = paramsFromSliders(sliders);
+
+  // Update the PMF and CDF
+  source_p.data['y_p'] = dist.pmf(x_p, params);
+  source_c.data['y_c'] = dist.cdfForPlotting(x_c[0], x_c[x_c.length - 1], params, dist.xMin(params));
+
+  source_p.change.emit();
+  source_c.change.emit();
+}
+
+function updateData(source_p, source_c, p_p, sliders, discrete) {
+  if (discrete) {
+    updateDiscretePMFandCDF(source_p, source_c, p_p.x_range, sliders);
+  }
+  else {
+    updateContinuousPDFandCDF(source_p, source_c, p_p.x_range, sliders);
+  }
+}
+
+function updateQuantiles(quantileSetterSwitch, sliders, xBoxes, pBoxes) {
+  if (!quantileSetterSwitch.active) {
+    let params = paramsFromSliders(sliders);
+
+    for (let i = 0; i < xBoxes.length; i++) {
+      xBoxes[i].value = dist.ppfSingleValue(Number(pBoxes[i].value), params).toPrecision(4);
+    }
+  }
+}
+
+
+function quantileSetter(xBoxes, pBoxes, quantileSetterDiv, sliders, startBoxes, endBoxes, p_p, p_c, source_p) {
+  // Shut off the triggering of callbacks
+  triggerCallbacks.active = false;
+
+  // Extract quantiles and desired targets
+  let x = paramsFromBoxes(xBoxes);
+  let p = paramsFromBoxes(pBoxes);
+
+  // Obtain parameter values
+  let params = paramsFromSliders(sliders);
+
+  // Make sure the input is ok.
+  let inputOk = checkQuantileInput(x, p, dist.hardMin, dist.hardMax, dist.varName, quantileSetterDiv);
+
+  if (inputOk) {
+    // Extra parameters to be passed into quantileSet
+    let extraParams = [];
+    for (let i = 0; i < dist.paramNames.length; i++) {
+      if (dist.fixedParamsInds.includes(i)) {
+        extraParams.push(params[i]);
+      }
+    }
+
+    // Error text in the event of failure
+    let errText = '<p style="color:tomato;">Failed to find parameters to match quantiles.</p>';
+
+    // Obtain parameter values to match quantiles
+    let optimParams, optimSuccess;
+    try {
+      [optimParams, optimSuccess] = dist.quantileSet(x, p, extraParams);
+    } catch(e) {
+      optimSuccess = false;
+      errText = '<p style="color:tomato;">' + e.message; + '</p>';
+    }
+
+    let text;
+    if (optimSuccess) {
+      // Update text
+      text = '<p>';
+      for (let i = 0; i < optimParams.length - 1; i++) {
+        text += dist.paramNames[dist.activeParamsInds[i]] + ' = ' + optimParams[i].toPrecision(4) + ', ';
+      }
+      let i = optimParams.length - 1;
+      text += dist.paramNames[dist.activeParamsInds[i]] + ' = ' + optimParams[i].toPrecision(4) + '</p>';
+    } else{
+      text = errText;
+    }
+
+    quantileSetterDiv.text = text;
+
+    if (optimSuccess) {
+      // Update slider ranges to put parameter values in middle.
+      for (let i = 0; i < optimParams.length; i++ ){
+        if (sliders[dist.activeParamsInds[i]].start > optimParams[i] || sliders[dist.activeParamsInds[i]].end < optimParams[i]) {
+          startBoxes[dist.activeParamsInds[i]].value = (4 * optimParams[i] / 1001).toPrecision(4);
+          endBoxes[dist.activeParamsInds[i]].value = (4 * optimParams[i]).toPrecision(4);        
+        }
+        sliders[dist.activeParamsInds[i]].value = optimParams[i];
+      }
+
+      // Reset the view so the PDF/CDF are clearly displayed.
+      // re-obtain parameter values
+      params = paramsFromSliders(sliders); 
+
+      // Obtain limits of x-axis
+      let [x1, x2] = dist.defaultXRange(params);
+
+      // Set the new x_range.
+      p_p.x_range.start = x1;
+      p_p.x_range.end = x2;
+
+      // Recompute PDF/PMF and CDF
+      updateData(source_p, source_c, p_p, sliders, discrete);
+
+      // Set y-ranges to the defaults
+      setYRanges(p_p, p_c, source_p);  
+    }
+  }
+
+  // Turn quantile trigger back on in case slider moves
+  triggerCallbacks.active = true;  
+}

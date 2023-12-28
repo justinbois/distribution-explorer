@@ -4,7 +4,10 @@
 
 if (cb_obj.active) {
   for (let i = 0; i < sliders.length; i++) {
+    if (!dist.fixedParamsInds.includes(i)) {
+      sliders[i].title = dist.paramNames[i] + ' (computed)';
       sliders[i].disabled = true;
+    }
   }
   for (let xBox of xBoxes) {
     xBox.disabled = false;
@@ -14,7 +17,10 @@ if (cb_obj.active) {
   }
 } else {
   for (let i = 0; i < sliders.length; i++) {
+    if (!dist.fixedParamsInds.includes(i)) {
+      sliders[i].title = dist.paramNames[i];
       sliders[i].disabled = false;
+    }
   }
   for (let xBox of xBoxes) {
     xBox.disabled = true;
