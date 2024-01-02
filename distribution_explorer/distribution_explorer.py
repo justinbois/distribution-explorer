@@ -42,6 +42,8 @@ continuous_dists = [
     "gaussian",  # Same as normal
     "pareto",
     "student_t",
+    "vonmises", # Same as von_mises
+    "von_mises",
     "uniform",
     "weibull",
 ]
@@ -124,8 +126,8 @@ def _funs(dist):
         )
     elif dist == "negative_binomial_mu_phi":
         return (
-            lambda x, mu, phi: st.nbinom.pmf(x, mu, phi / mu),
-            lambda x, mu, phi: st.nbinom.cdf(x, mu, phi / mu),
+            lambda x, mu, phi: st.nbinom.pmf(x, phi, phi / mu),
+            lambda x, mu, phi: st.nbinom.cdf(x, phi, phi / mu),
         )
     elif dist == "negative_binomial_r_b":
         return (
@@ -153,7 +155,7 @@ def _funs(dist):
     elif dist == "half_normal":
         return st.halfnorm.pdf, st.halfnorm.cdf
     elif dist == "half_student_t":
-        return st.t.pdf, st.t.cdf
+        return _halfstudent_t_pdf, _halfstudent_t_cdf
     elif dist == "inverse_gamma":
         return (
             lambda x, alpha, beta: st.invgamma.pdf(x, alpha, loc=0, scale=beta),
@@ -177,6 +179,11 @@ def _funs(dist):
         return (
             lambda x, alpha, beta: st.uniform.pdf(x, alpha, beta - alpha),
             lambda x, alpha, beta: st.uniform.cdf(x, alpha, beta - alpha),
+        )
+    elif dist == "von_mises":
+        return (
+            lambda x, mu, kappa: st.vonmises_line.pdf(x, kappa, loc=mu),
+            lambda x, mu, kappa: st.vonmises_line.cdf(x, kappa, loc=mu),
         )
     elif dist == "weibull":
         return (
@@ -231,8 +238,8 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
                 max_value=1,
             ),
         ]
-        x_min = 0
-        x_max = 20
+        x_min = -0.5
+        x_max = 20.5
         x_axis_label = "n"
         title = "Binomial"
     elif dist == "categorical":
@@ -295,8 +302,8 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
                 max_value="Infinity",
             ),
         ]
-        x_min = 0
-        x_max = 10
+        x_min = -0.5
+        x_max = 10.5
         x_axis_label = "n"
         title = "Discrete Uniform"
     elif dist == "geometric":
@@ -312,7 +319,7 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
                 max_value=1,
             )
         ]
-        x_min = 0
+        x_min = -0.5
         x_max = 20
         x_axis_label = "y"
         title = "Geometric"
@@ -357,7 +364,7 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         params = [
             dict(
                 name="α",
-                start=0,
+                start=0.01,
                 end=20,
                 value=5,
                 step=0.01,
@@ -367,7 +374,7 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
             ),
             dict(
                 name="β",
-                start=0,
+                start=0.01,
                 end=20,
                 value=5,
                 step=0.01,
@@ -384,7 +391,7 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         params = [
             dict(
                 name="µ",
-                start=0,
+                start=0.01,
                 end=20,
                 value=5,
                 step=0.01,
@@ -394,7 +401,7 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
             ),
             dict(
                 name="φ",
-                start=0,
+                start=0.01,
                 end=5,
                 value=1,
                 step=0.01,
@@ -411,7 +418,7 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         params = [
             dict(
                 name="r",
-                start=0,
+                start=0.01,
                 end=20,
                 value=5,
                 step=0.01,
@@ -438,7 +445,7 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         params = [
             dict(
                 name="λ",
-                start=0,
+                start=0.01,
                 end=20,
                 value=5,
                 step=0.01,
@@ -812,6 +819,33 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         x_max = 11
         x_axis_label = "y"
         title = "Uniform"
+    elif dist == "von_mises":
+        params = [
+            dict(
+                name="μ",
+                start=-3.1416, # Need to be just a few decimal places for
+                end=3.1416,    # slider start/end adjust windows
+                value=0,
+                step=0.01,
+                is_int=False,
+                min_value="-3.1416",
+                max_value="3.1416",
+            ),
+            dict(
+                name="κ",
+                start=0.01,
+                end=10,
+                value=1,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+        ]
+        x_min = -np.pi
+        x_max = np.pi
+        x_axis_label = "y"
+        title = "Von Mises"
     elif dist == "weibull":
         params = [
             dict(
@@ -883,63 +917,99 @@ def _compute_quantile_setter_params(dist, params, ptiles=None):
     x = []
     p = []
 
+    # For some reason, Bernoulli isn't working with quantile setting;
+    # PMF vanishes when quantile setting invoked. It's trivial anyway,
+    # so ok to omit.
+    # if dist == "bernoulli":
+    #     p = [0.5] if ptiles is None else list(ptiles)
+    #     x = [0]
+    if dist == "binomial":
+        p = [0.5] if ptiles is None else list(ptiles)
+        x = list(st.binom.ppf(p, params[0]["value"], params[1]["value"]))
+    if dist == "geometric":
+        p = [0.5] if ptiles is None else list(ptiles)
+        x = list(st.gamma.ppf(p, params[0]["value"], loc=-1))
+    if dist == "geometric":
+        p = [0.5] if ptiles is None else list(ptiles)
+        x = [0]
+    if dist == "negative_binomial":
+        p = [0.5] if ptiles is None else list(ptiles)
+        x = list(
+            st.nbinom.ppf(p, params[0]["value"], params[1]["value"] / (1 + params[1]["value"]))
+        )
+    if dist == "negative_binomial_mu_phi":
+        p = [0.5] if ptiles is None else list(ptiles)
+        x = list(
+            st.nbinom.ppf(p, params[0]["value"], params[1]["value"] / (params[0]["value"] + params[1]["value"]))
+        )
+    if dist == "negative_binomial_r_b":
+        p = [0.5] if ptiles is None else list(ptiles)
+        x = list(
+            st.nbinom.ppf(p, params[0]["value"], 1 / (1 + params[1]["value"]))
+        )
+    if dist == "poisson":
+        p = [0.5] if ptiles is None else list(ptiles)
+        x = list(st.poisson.ppf(p, params[0]["value"]))
     if dist == "beta":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(st.beta.ppf(p, params[0]["value"], params[1]["value"]))
-    elif dist == "cauchy":
+    if dist == "cauchy":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(st.cauchy.ppf(p, params[0]["value"], params[1]["value"]))
-    elif dist == "exponential":
+    if dist == "exponential":
         p = [0.95] if ptiles is None else list(ptiles)
         x = [-np.log(1.0 - p[0]) / params[0]["value"]]
-    elif dist == "gamma":
+    if dist == "gamma":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(
             st.gamma.ppf(p, params[0]["value"], loc=0, scale=1.0 / params[1]["value"])
         )
-    elif dist == "half_cauchy":
+    if dist == "half_cauchy":
         p = [0.95] if ptiles is None else list(ptiles)
         x = list(st.halfcauchy.ppf(p, params[0]["value"], params[1]["value"]))
-    elif dist == "half_normal":
+    if dist == "half_normal":
         p = [0.95] if ptiles is None else list(ptiles)
         x = list(st.halfnorm.ppf(p, params[0]["value"], params[1]["value"]))
-    elif dist == "half_student_t":
+    if dist == "half_student_t":
         p = [0.95] if ptiles is None else list(ptiles)
         x = list(
-            st.halfnorm.ppf(
+            st.t.ppf(
                 [(1 + p_val) / 2 for p_val in p], params[0]["value"], params[1]["value"]
             )
         )
-    elif dist == "inverse_gamma":
+    if dist == "inverse_gamma":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(
             st.invgamma.ppf(p, params[0]["value"], loc=0, scale=params[1]["value"])
         )
-    elif dist == "log_normal":
+    if dist == "log_normal":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(
             st.lognorm.ppf(
                 p, params[1]["value"], loc=0, scale=np.exp(params[1]["value"])
             )
         )
-    elif dist == "normal":
+    if dist == "normal":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(st.norm.ppf(p, params[0]["value"], params[1]["value"]))
-    elif dist == "pareto":
+    if dist == "pareto":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(st.pareto.ppf(p, params[1]["value"], scale=params[0]["value"]))
-    elif dist == "student_t":
+    if dist == "student_t":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(
             st.t.ppf(p, params[0]["value"], params[1]["value"], params[2]["value"])
         )
-    elif dist == "uniform":
+    if dist == "uniform":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = [
             (1 - p[0]) * params[0]["value"] + p[0] * params[1]["value"],
             (1 - p[1]) * params[0]["value"] + p[1] * params[1]["value"],
         ]
-    elif dist == "weibull":
+    if dist == "von_mises":
+        p = [0.025, 0.975] if ptiles is None else list(ptiles)
+        x = list(st.vonmises_line.ppf(p, params[1]["value"], loc=params[0]['value']))
+    if dist == "weibull":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(
             st.weibull_min.ppf(p, params[0]["value"], loc=0, scale=params[1]["value"])
@@ -1017,6 +1087,8 @@ def explore(
         dist = "half_cauchy"
     if dist == "halfstudent_t":
         dist = "half_student_t"
+    if dist == "vonmises":
+        dist = "von_mises"
 
     # Name of JS class containing dist
     distjs = f"{_to_camel_case(dist)}Distribution"
@@ -1059,8 +1131,8 @@ def explore(
         p_y_axis_label = "PDF"
 
     # Lock axes for Bernoulli and Categorical
-    if dist in ['bernoulli', 'categorical'] and 'tools' not in kwargs:
-        kwargs['tools'] = "save"
+    if dist in ["bernoulli", "categorical"] and "tools" not in kwargs:
+        kwargs["tools"] = "save"
 
     p_p = bokeh.plotting.figure(
         x_axis_label=x_axis_label,
@@ -1093,11 +1165,11 @@ def explore(
         p_p.y_range.start = 0.0
 
     # For Bernoulli and Categorical, explicitly set p_p y_range
-    if dist in ('bernoulli', 'categorical'):
+    if dist in ("bernoulli", "categorical"):
         p_p.y_range = bokeh.models.Range1d(-0.04, 1.04)
 
     # Explicity tickers for Bernoulli and Categorical
-    if dist == 'bernoulli':
+    if dist == "bernoulli":
         p_p.xaxis.ticker = [0, 1]
         p_c.xaxis.ticker = [0, 1]
     if dist == "categorical":
@@ -1201,14 +1273,15 @@ def explore(
     # Adjust parameters vs quantile setter mode
     quantile_setter_switch = bokeh.models.Switch(active=False)
 
+    # Invisible switch to retain whether or not recomputing of PDF/PMF
+    # and CDF is triggered. Useful to keep off when redoing x-axes, etc.
+    # while resetting, quantile setting, etc.
+    trigger_callbacks = bokeh.models.Switch(active=True)
+
     # Build callback preamble, all necessary functions for calculations
     callback_preamble = ""
-    if discrete:
-        for f in callbacks._dependencies["discrete_callback"]:
-            callback_preamble += callbacks._callbacks[f]
-    else:
-        for f in callbacks._dependencies["continuous_callback"]:
-            callback_preamble += callbacks._callbacks[f]
+    for f in callbacks._dependencies["slider_callback"]:
+        callback_preamble += callbacks._callbacks[f]
 
     for f in callbacks._dependencies[distjs]:
         callback_preamble += callbacks._callbacks[f]
@@ -1217,78 +1290,65 @@ def explore(
     callback_preamble += f"\nvar dist = new {distjs}();\n\n"
 
     # Build code for callbacks that require the distribution
-    if discrete:
-        callback_code = callback_preamble + callbacks._callbacks["discrete_callback"]
-    else:
-        callback_code = callback_preamble + callbacks._callbacks["continuous_callback"]
-
+    slider_callback_code = callback_preamble + callbacks._callbacks["slider_callback"]
+    xaxis_change_callback_code = (
+        callback_preamble + callbacks._callbacks["xaxis_change_callback"]
+    )
+    quantile_setter_switch_callback_code = (
+        callback_preamble + callbacks._callbacks["quantile_setter_switch_callback"]
+    )
     quantile_setter_callback_code = (
-        callback_preamble
-        + callbacks._callbacks["paramsFromBoxes"]
-        + callbacks._callbacks["paramsFromSliders"]
-        + callbacks._callbacks["checkQuantileInput"]
-        + callbacks._callbacks["quantile_setter_callback"]
-        + callbacks._callbacks["setYRanges"]
+        callback_preamble + callbacks._callbacks["quantile_setter_callback"]
     )
-
     reset_button_callback_code = (
-        callback_preamble
-        + callbacks._callbacks["setYRanges"]
-        + callbacks._callbacks["reset_button_callback"]
+        callback_preamble + callbacks._callbacks["reset_button_callback"]
     )
 
-    # Build the callback CustomJS objects from the code with args.
-    # When building callbacks, lists have to be rebuilt to avoid circular references in
-    # serialization.
-    callback = bokeh.models.CustomJS(
-        args=dict(
+    # Build the callback CustomJS objects from the code with args. Just pass all args
+    # to all callbacks for simplicity. Note also that when building callbacks, lists
+    # have to be rebuilt to avoid circular references in serialization and the args need
+    # to be created for each callback.
+    def _build_args():
+        return dict(
+            p_p=p_p,
+            p_c=p_c,
             source_p=source_p,
             source_c=source_c,
-            dist=dist,
             discrete=discrete,
-            xRange=p_p.x_range,
             n=n,
             sliders=[slider for slider in sliders],
             xBoxes=[x_box for x_box in x_boxes],
             pBoxes=[p_box for p_box in p_boxes],
             quantileSetterSwitch=quantile_setter_switch,
-        ),
-        code=callback_code,
+            quantileSetterDiv=quantile_setter_div,
+            triggerCallbacks=trigger_callbacks,
+            startBoxes=[start_box for start_box in start_boxes],
+            endBoxes=[end_box for end_box in end_boxes],
+        )
+
+    # Now make callbacks
+    slider_callback = bokeh.models.CustomJS(
+        args=_build_args(),
+        code=slider_callback_code,
+    )
+
+    xaxis_change_callback = bokeh.models.CustomJS(
+        args=_build_args(),
+        code=xaxis_change_callback_code,
     )
 
     quantile_setter_switch_callback = bokeh.models.CustomJS(
-        args=dict(
-            quantileSetterDiv=quantile_setter_div,
-            sliders=[slider for slider in sliders],
-            xBoxes=[x_box for x_box in x_boxes],
-            pBoxes=[p_box for p_box in p_boxes],
-        ),
-        code=callbacks._callbacks["quantile_setter_switch_callback"],
+        args=_build_args(),
+        code=quantile_setter_switch_callback_code,
     )
 
     quantile_setter_callback = bokeh.models.CustomJS(
-        args=dict(
-            p_p=p_p,
-            p_c=p_c,
-            source_p=source_p,
-            quantileSetterSwitch=quantile_setter_switch,
-            quantileSetterDiv=quantile_setter_div,
-            sliders=[slider for slider in sliders],
-            xBoxes=[x_box for x_box in x_boxes],
-            pBoxes=[p_box for p_box in p_boxes],
-            startBoxes=[start_box for start_box in start_boxes],
-            endBoxes=[end_box for end_box in end_boxes],
-        ),
+        args=_build_args(),
         code=quantile_setter_callback_code,
     )
 
     reset_button_callback = bokeh.models.CustomJS(
-        args=dict(
-            sliders=sliders,
-            p_p=p_p,
-            p_c=p_c,
-            source_p=source_p,
-        ),
+        args=_build_args(),
         code=reset_button_callback_code,
     )
 
@@ -1319,11 +1379,11 @@ def explore(
 
     # Link callback to sliders
     for slider in sliders:
-        slider.js_on_change("value", callback)
+        slider.js_on_change("value", slider_callback)
 
     # Link callback upon changing x-axis ranges
-    p_p.x_range.js_on_change("start", callback)
-    p_p.x_range.js_on_change("end", callback)
+    p_p.x_range.js_on_change("start", xaxis_change_callback)
+    p_p.x_range.js_on_change("end", xaxis_change_callback)
 
     # Link quantile setters switch
     quantile_setter_switch.js_on_change("active", quantile_setter_switch_callback)
@@ -1335,7 +1395,7 @@ def explore(
         p_box.js_on_change("value", quantile_setter_callback)
 
     # Link callbacks to reset button (not for Bernoulli and Categorical)
-    if dist not in ['bernoulli', 'categorical']:
+    if dist not in ["bernoulli", "categorical"]:
         p_c.js_on_event(bokeh.events.Reset, reset_button_callback)
 
     # Layout with label for switch
