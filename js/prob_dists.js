@@ -1,8 +1,20 @@
 class UnivariateDistribution {
-  constructor() {
+  constructor(parametrization) {
+    // Name of distribution
+    this.name = '';
+
+    // Name of independent variable (used in quantile setter)
+    this.varName = '';
+
     // Maximum allowed min and max of the distribution, regardless of params
-    this.hardMin = -Infinity;
+    this.hardMin = 0;
     this.hardMax = Infinity;
+
+    // x-value when quantile = 1
+    this.p1Value = Infinity;
+
+    // Name of specific parametrization
+    this.parametrization = parametrization
 
     // Parameter names, in order of params
     this.paramNames = [];
@@ -27,76 +39,76 @@ class UnivariateDistribution {
     }
   }
 
-  xMin(params) {
-    // Minimal value of support; defined for each distribution.
+  xMin(params, parametrization = this.parametrization) {
+    // Minimal value of support; defined for each distribution and possibly dependent on parameter values.
   }
 
-  xMax(params) {
-    // Maxima value of support; defined for each distribution.
+  xMax(params, parametrization = this.parametrization) {
+    // Maximal value of support; defined for each distribution and possibly dependent on parameter values.
   }
 
-  cdfSingleValue(x, params, xMin = 0) {
+  cdfSingleValue({x, params, parametrization = this.parametrization}) {
     // Empty; defined for each distribution.
   }
 
-  ppfSingleValue(p, params, xMin = 0, xMax = Infinity, p1Value = Infinity) {
+  ppfSingleValue(p, params, parametrization = this.parametrization) {
     // Empty; defined for each distribution.
   }
 
-  quantileSet(x, p, extraParams = []) {
-    // Empty; defined for each distribution.    
+  quantileSet(x, p, parametrization = this.parametrization) {
+    // Empty; defined for each distribution.
   }
 
-  defaultXRange(params) {
+  defaultXRange(params, parametrization = this.parametrization) {
     // Default x-range for reset button. Empty; defined for each distribution.
   }
 
 
-  cdf(x, params, xMin = 0) {
+  cdf(x, params, parametrization = this.parametrization) {
     params = this.scalarToArrayParams(params);
 
     return this.scalarOrArrayCompute(
-      (x, params) => this.cdfSingleValue(x, params, xMin),
+      (x, params) => this.cdfSingleValue(x, params, parametrization),
       x,
       params
     );
   }
 
-  ppfSingleValueWithCheck(p, params, xMin = 0, xMax = Infinity, p1Value = Infinity) {
+  ppfSingleValueWithCheck(p, params, parametrization = this.parametrization) {
     if (p < 0 || p > 1) return NaN;
-    return this.ppfSingleValue(p, params, xMin, xMax, p1Value);
+    return this.ppfSingleValue(p, params, parametrization);
   }
 
-  ppf(p, params, xMin = 0, xMax = Infinity, p1Value = Infinity) {
+  ppf(p, params, parametrization = this.parametrization) {
     params = this.scalarToArrayParams(params);
 
     return this.scalarOrArrayCompute(
-      (p, params) => this.ppfSingleValueWithCheck(p, params, xMin, xMax, p1Value),
+      (p, params) => this.ppfSingleValueWithCheck(p, params, parametrization),
       p,
       params
     );
   }
 
-  resetXRange(params, p) {
+  resetXRange(params, p, parametrization = this.parametrization) {
     if (p === undefined) {
-      return this.defaultXRange(params);
+      return this.defaultXRange(params, parametrization);
     } else if (this.checkResetp(p)) {
-      return this.ppf(p, params);
+      return this.ppf(p, params, parametrization);
     }
   }
 
-  scalarOrArrayCompute(func, x, params) {
+  scalarOrArrayCompute(func, x, params, parametrization = this.parametrization) {
     if (x instanceof Array) {
       let xLen = x.length;
 
       let res = [];
       for (let i = 0; i < xLen; i++) {
-        res.push(func(x[i], params));
+        res.push(func(x[i], params, parametrization));
       }
 
       return res;
     } else {
-      return func(x, params);
+      return func(x, params, parametrization);
     }
   }
 
@@ -107,38 +119,38 @@ class UnivariateDistribution {
 
 
 class DiscreteUnivariateDistribution extends UnivariateDistribution {
-  constructor() {
-    super();
+  constructor(parametrization) {
+    super(parametrization);
   }
 
-  pmfSingleValue(x, params) {
+  pmfSingleValue(x, params, parametrization = this.parametrization) {
     // Empty; defined for each distribution.
   }
 
-  pmf(x, params) {
+  pmf(x, params, parametrization = this.parametrization) {
     params = this.scalarToArrayParams(params);
 
     return this.scalarOrArrayCompute(
-      (x, params) => this.pmfSingleValue(x, params),
+      (x, params) => this.pmfSingleValue(x, params, parametrization),
       x,
       params);
   }
 
-  cdfSingleValue(x, params, xMin = 0) {
+  cdfSingleValue(x, params, parametrization = this.parametrization) {
     params = this.scalarToArrayParams(params);
 
     // Compute CDF by summing up to x for which it is desired.
     let cumsum = 0.0;
     let summand = 0.0;
-    for (let n = xMin; n <= x; n++) {
-        summand = this.pmfSingleValue(n, params);
+    for (let n = this.xMin(params, parametrization); n <= x; n++) {
+        summand = this.pmfSingleValue(n, params, parametrization);
         if (!isNaN(summand)) cumsum += summand;
     }
 
     return cumsum;
   }
 
-  cdfForPlotting(xStart, xEnd, params, xMin = 0) {
+  cdfForPlotting(xStart, xEnd, params, parametrization = this.parametrization) {
     // This is a faster CDF for plotting, since it is assumed that
     // values for the CDF are wanted at all integer values between
     // xStart and xEnd, inclusive. Values of the CDF are also repeated
@@ -148,15 +160,15 @@ class DiscreteUnivariateDistribution extends UnivariateDistribution {
     // Compute CDF by summing up to first value of x for which it is desired.
     let cumsum = 0.0;
     let prob;
-    for (let x = xMin; x < xStart; x++) {
-      prob = this.pmfSingleValue(x, params);
+    for (let x = this.xMin(params, parametrization); x < xStart; x++) {
+      prob = this.pmfSingleValue(x, params, parametrization);
       if (!isNaN(prob)) cumsum += prob;
     }
 
     // Now start building CDF.
     let yCDF = [];
     for (let x = xStart; x < xEnd; x++) {
-      prob = this.pmfSingleValue(x, params);
+      prob = this.pmfSingleValue(x, params, parametrization);
       if (!isNaN(prob)) cumsum += prob;
       yCDF.push(cumsum, cumsum);
     }
@@ -164,24 +176,27 @@ class DiscreteUnivariateDistribution extends UnivariateDistribution {
     return yCDF;
   }
 
-  ppfSingleValue(p, params, xMin = 0, xMax = Infinity, p1Value = Infinity) {
+  ppfSingleValue(p, params, parametrization = this.parametrization) {
+    if (p < 0 || p > 1) throw new Error('p must be between 0 and 1.')
+
     // ppf is minimum value of x such that F(x) ≥ p where F(x) is the CDF
-    if (p == 0) return xMin;
+    if (p == 0) return xMin(params, parametrization);
 
     // If asking for for p = 1, return prescribed value
-    if (p == 1) return p1Value;
+    if (p == 1) return xMax(params, parametrization);
 
     params = this.scalarToArrayParams(params);
 
     // Initialize
-    let n = xMin;
-    let cumsum = this.pmfSingleValue(n, params);
+    let n = this.xMin(params, parametrization);
+    let cumsum = this.pmfSingleValue(n, params, parametrization);
 
     let iters = 0;
     let summand = 0.0;
-    while (cumsum < p && !isclose(cumsum, p) && !isNaN(summand) && n < xMax) {
+    let xMaxForTheseParams = this.xMax(params, parametrization);
+    while (cumsum < p && !isclose(cumsum, p) && !isNaN(summand) && n < xMaxForTheseParams) {
       n += 1;
-      summand = this.pmfSingleValue(n, params);
+      summand = this.pmfSingleValue(n, params, parametrization);
 
       if (!isNaN(summand)) cumsum += summand;
 
@@ -195,19 +210,19 @@ class DiscreteUnivariateDistribution extends UnivariateDistribution {
 
 
 class ContinuousUnivariateDistribution extends UnivariateDistribution {
-  constructor() {
-    super();
+  constructor(parametrization) {
+    super(parametrization);
   }
 
-  pdfSingleValue(x, params) {
+  pdfSingleValue(x, params, parametrization = this.parametrization) {
     // Empty; defined for each distribution.
   }
 
-  pdf(x, params) {
+  pdf(x, params, parametrization = this.parametrization) {
     params = this.scalarToArrayParams(params);
 
     return this.scalarOrArrayCompute(
-      (x, params) => this.pdfSingleValue(x, params),
+      (x, params) => this.pdfSingleValue(x, params, parametrization),
       x,
       params
     );
@@ -217,6 +232,8 @@ class ContinuousUnivariateDistribution extends UnivariateDistribution {
 
 
 class TemplateDiscreteUnivariateDistribution extends DiscreteUnivariateDistribution {
+  // Only add parametrization argument to constructor() and super() in the next two lines
+  // if you need to define it (i.e., more than one possibility)
   constructor() {
     super();
 
@@ -242,30 +259,30 @@ class TemplateDiscreteUnivariateDistribution extends DiscreteUnivariateDistribut
     // Can have more specifications in the constructor.
   }
 
-  xMin(params) {
+  xMin(params, parametrization = this.parametrization) {
     // Must be specified.    
   }
 
-  xMax(params) {
+  xMax(params, parametrization = this.parametrization) {
     // Must be specified.    
   }
 
-  pmfSingleValue(x, params) {
+  pmfSingleValue(x, params, parametrization = this.parametrization) {
     // Must be specified.
   }
 
-  defaultXRange(params) {
+  defaultXRange(params, parametrization = this.parametrization) {
     // Must be specified.
   }
 
-  quantileSet(x, p, extraParams = []) {
+  quantileSet(x, p, extraParams = [], parametrization = this.parametrization) {
     // Must be specified.
   }
 
   // CDF and PPF are automatically computed in the superclass. These can be overrided by
   // specifying:
-  //   cdfSingleValue(x, params, xMin)
-  //   ppfSingleValue(p, params, xMin, xMax, p1Value)
+  //   cdfSingleValue(x, params, parametrization = this.parametrization)
+  //   ppfSingleValue(p, params, parametrization = this.parametrization)
   //
   // Note that cdfSingleValue will *not* be used to compute the CDF for plotting. That is
   // done from the PMF, which is usually more efficient. The cdfSingleValue is really only
@@ -275,6 +292,8 @@ class TemplateDiscreteUnivariateDistribution extends DiscreteUnivariateDistribut
 
 
 class TemplateContinuousUnivariateDistribution extends ContinuousUnivariateDistribution {
+  // Only add parametrization argument to constructor() and super() in the next two lines
+  // if you need to define it (i.e., more than one possibility)
   constructor() {
     super();
 
@@ -300,31 +319,31 @@ class TemplateContinuousUnivariateDistribution extends ContinuousUnivariateDistr
     // Can have more specifications in the constructor.
   }
 
-  xMin(params) {
+  xMin(params, parametrization = this.parametrization) {
     // Must be specified.    
   }
 
-  xMax(params) {
+  xMax(params, parametrization = this.parametrization) {
     // Must be specified.    
   }
 
-  pdfSingleValue(x, params) {
+  pdfSingleValue(x, params, parametrization = this.parametrization) {
     // Must be specified.
   }
 
-  cdfSingleValue(x, params) {
+  cdfSingleValue(x, params, parametrization = this.parametrization) {
     // Must be specified.
   }
 
-  ppfSingleValue(p, params) {
+  ppfSingleValue(p, params, parametrization = this.parametrization) {
     // Must be specified.
   }
 
-  defaultXRange(params) {
+  defaultXRange(params, parametrization = this.parametrization) {
     // Must be specified.
   }
 
-  quantileSet(x, p, extraParams = []) {
+  quantileSet(x, p, extraParams = [], parametrization = this.parametrization) {
     // Must be specified.
   }
 
@@ -737,8 +756,9 @@ class GeometricDistribution extends DiscreteUnivariateDistribution {
   ppfSingleValue(p, params) {
     let theta = params[0];
 
-    if (p == 0) return 0;
-    if (p == 1) return Infinity;
+    if (p === 0) return 0;
+    if (p === 1) return Infinity;
+    if (theta === 1) return 0;
 
     let res = Math.ceil(Math.log(1 - p) / Math.log(1 - theta) - 1);
 
@@ -825,8 +845,8 @@ class HypergeometricDistribution extends DiscreteUnivariateDistribution {
 
 
 class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
-  constructor(parametrization) {
-    super();
+  constructor(parametrization = 'alpha-beta', fixedParam = undefined) {
+    super(parametrization);
 
     // Name of distribution
     this.name = 'NegativeBinomial';
@@ -838,27 +858,28 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
     this.hardMin = 0;
     this.hardMax = Infinity;
 
-    if (parametrization === undefined) {
-      this.parametrization = 'alpha-beta'
-    } else {
-      this.parametrization = parametrization;
-    }
-
     // Parameter names, in order of params
     if (this.parametrization === 'alpha-beta') {
       this.paramNames = ['α', 'β'];
+      if (fixedParam === undefined) this.fixedParams = ['α'];
+      else this.fixedParams = [fixedParam];
     } else if (this.parametrization === 'mu-phi') {
       this.paramNames = ['µ', 'φ'];
+      if (fixedParam === undefined) this.fixedParams = ['φ'];
+      else this.fixedParams = [fixedParam];
     } else if (this.parametrization === 'alpha-p') {
       this.paramNames = ['α', 'p'];
+      if (fixedParam === undefined) this.fixedParams = ['α'];
+      else this.fixedParams = [fixedParam];
     } else if (this.parametrization === 'r-b') {
       this.paramNames = ['r', 'b'];
+      if (fixedParam === undefined) this.fixedParams = ['r'];
+      else this.fixedParams = [fixedParam];
     } else { // Some other, probably invalid parameters
       this.paramNames = ['unnamedParam1', 'unnamedParam2'];
+      if (fixedParam === undefined) this.fixedParams = ['unnamedParam1'];
+      else this.fixedParams = [fixedParam];
     }
-
-    // Parameters that are fixed in quantile setting
-    this.fixedParams = [];
 
     // Trigger computing active and fixed indices for quantile setting
     super.generateActiveFixedInds()
@@ -872,34 +893,69 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
     return Infinity;
   }
 
-  convertParams(params) {
-    // Convert parameters to alpha-beta form.
+  convertParams(params, from = this.parametrization, to = 'alpha-beta') {
+    if (from === to) return params;
+    else if (to === 'alpha-beta') return this.convertParamsToAlphaBeta(params, from);
+    else if (from === 'alpha-beta') return this.convertParamsFromAlphaBeta(params, to);
+    else return this.convertParamsFromAlphaBeta(this.convertParamsToAlphaBeta(params, from), to);
+  }
+
+  convertParamsToAlphaBeta(params, from = this.parametrization) {
+    // Convert parameters
     let alpha, beta;
 
-    if (this.parametrization === 'mu-phi') {
+    if (from === 'mu-phi') {
       let [mu, phi] = params.slice(0, 2);
       alpha = phi;
       beta = alpha / mu;
-    } else if (this.parametrization === 'alpha-p') {
+    } else if (from === 'alpha-p') {
       let [a, p] = params.slice(0, 2);
       alpha = a;
       beta = p / (1 - p);
-    } else if (this.parametrization === 'r-b') {
+    } else if (from === 'r-b') {
       let [r, b] = params.slice(0, 2);
       alpha = r;
       beta = 1 / b;
-    } else {
+    } else if (from === 'alpha-beta') {
       [alpha, beta] = params.slice(0, 2);
+    } else {
+      throw new Error('Invalid parametrization for converting. Allowed values are alpha-beta, mu-phi, alpha-p, and r-b.');
     }
 
     return [alpha, beta];
   }
 
-  pmfSingleValue(y, params) {
+  convertParamsFromAlphaBeta(params, to = this.parametrization) {
+    // Convert parameters from alpha-beta.
+    let [alpha, beta] = params.slice(0, 2);
+
+    let output;
+    if (to === 'mu-phi') {
+      let mu = alpha / beta;
+      let phi = alpha;
+      output = [mu, phi];
+    } else if (to === 'alpha-p') {
+      let a = alpha;
+      let p = beta / (1 + beta);
+      output = [a, p];
+    } else if (to === 'r-b') {
+      let r = alpha;
+      let b = 1 / beta;
+      output = [r, b];
+    } else if (to === 'alpha-beta') {
+      output = [alpha, beta];
+    } else {
+      throw new Error('Invalid parametrization for converting. Allowed values are alpha-beta, mu-phi, alpha-p, and r-b.');
+    }
+
+    return output;
+  }
+
+  pmfSingleValue(y, params, parametrization = this.parametrization) {
     if (y < 0) return NaN;
 
     // Grab parameters in alpha-beta form
-    let [alpha, beta] = this.convertParams(params);
+    let [alpha, beta] = this.convertParamsToAlphaBeta(params, parametrization);
 
     if (alpha <= 0 || beta <= 0) return NaN;
 
@@ -910,8 +966,11 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
                     - y * Math.log(1 + beta));
   }
 
-  cdfSingleValue(y, params) {
-    let [alpha, beta] = this.convertParams(params);
+  cdfSingleValue(y, params, parametrization = this.parametrization) {
+    let [alpha, beta] = this.convertParamsToAlphaBeta(params, parametrization);
+
+    if (alpha === 0 || beta === Infinity) return 1.0;
+    if (alpha === Infinity) return y === Infinity ? 1.0 : 0.0; 
 
     if (y <= 0) return 0.0;
     if (y === Infinity) return 1.0;
@@ -919,10 +978,8 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
     return regularizedIncompleteBeta(beta / (1 + beta), alpha, y + 1);
   }
 
-  defaultXRange(params) {
-    let convertedParams = this.convertParams(params);
-
-    let [x1, x2] = super.ppf([0.001, 0.999], convertedParams);
+  defaultXRange(params, parametrization = this.parametrization) {
+    let [x1, x2] = super.ppf([0.001, 0.999], this.convertParamsToAlphaBeta(params, parametrization));
 
     // If lower bound is within 10% of the range of bounds to zero, make it zero
     if (x1 < (x2 - x1) / 10.0) x1 = -1.0;
@@ -930,7 +987,47 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
     return [x1, x2];
   }
 
-  quantileSet(x, p) {
+  // Set one or the other parameter
+  quantileSet(x, p, extraParams) {
+    if (this.fixedParams.length != 1) {
+      throw new Error('Must have exactly one fixed parameter.')
+    }
+
+    let x1 = x[0];
+    let p1 = p[0];
+    let otherParam = extraParams[0];
+
+    if (!Number.isInteger(x1)) {
+      throw new Error(this.varName + ' must be integer.')
+    }
+    if (x1 < 0 ) {
+      throw new Error('Must have ' + this.varName + ' > 0.')
+    }
+
+    const rootFun = (xi, x1, p1) => {
+      if (this.fixedParamsInds[0] === 0) {
+        return p1 - this.cdfSingleValue(x1, [otherParam, xi / (1 - xi)], this.parametrization);
+      } else {
+        return p1 - this.cdfSingleValue(x1, [xi / (1 - xi), otherParam], this.parametrization);        
+      }
+    }
+
+    let xiOpt = brentSolve(rootFun, 0.0, 1.0, [x1, p1]);
+    let optimSuccess = xiOpt != null;
+    
+    return [[xiOpt / (1 - xiOpt)], optimSuccess];
+  }
+
+  // Quantile setting for Negative Binomial is tough due to it approaching Poisson for
+  // large parameter alpha, meaning that the Negative Binomial really only has one
+  // independent parameter in that case. The strategy is then as follows. We first
+  // attempt to hit both quantiles. If that fails, we attempt a Poisson quantile setting
+  // for the larger of the two quantiles. We check if that will then manage to hit both
+  // quantiles. If so, we report that. Otherwise, it usually means that the distribution 
+  // is too narrow; can't get any narrower than Poisson. We then report failure.
+  // This is not generally used. Better to fix one parameter and set the other to hit
+  // a single quantile.
+  quantileSetBoth(x, p) {
     let [x1, x2] = x.slice(0, 2);
     let [p1, p2] = p.slice(0, 2);
 
@@ -941,81 +1038,118 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
       throw new Error('Must have ' + this.varName + ' > 0.')
     }
 
+    // Easiest to fit in mu-phi parametrization
     // Root finding function using log parameters to enforce positivity
     const quantileRootFun = (params, x1, p1, x2, p2) => {
-      let alpha = Math.exp(params[0]);
-      let beta = Math.exp(params[1]);
+      let mu = Math.exp(params[0]);
+      let phi = Math.exp(params[1]);
 
-      let r1 = this.cdfSingleValue(x1, [alpha, beta]) - p1;
-      let r2 = this.cdfSingleValue(x2, [alpha, beta]) - p2;
+      let r1 = this.cdfSingleValue(x1, [mu, phi], 'mu-phi') - p1;
+      let r2 = this.cdfSingleValue(x2, [mu, phi], 'mu-phi') - p2;
+
+      console.log(mu, phi);
 
       return [r1, r2];
     };
 
-    // Grid up guesses to find good initial guess
-    let logalphaGuesses = linspace(-14, 10, 10);
-    let logbetaGuesses = linspace(-14, 10, 10);
-    let [logalphaGrid, logbetaGrid] = meshgrid(logalphaGuesses, logbetaGuesses);
-
-    // Evaluate function at each grid point and find smallest one
-    // Alternatively, can choose guess = [0.0, 0.0], but does not always converge.
-    // let fNorm = Infinity;
-    // let newfNorm;
-    // let guess;
-    // for (let i = 0; i < logalphaGrid.length; i++) {
-    //   for (let j = 0; j < logalphaGrid[i].length; j++) {
-    //     newfNorm = norm(quantileRootFun([logalphaGrid[i][j], logbetaGrid[i][j]], x1, p1, x2, p2));
-    //     if (newfNorm < fNorm) {
-    //       fNorm = newfNorm;
-    //       guess = [logalphaGrid[i][j], logbetaGrid[i][j]];
-    //     }
-    //   }
-    // }
+    // Guess phi = 1, and then mu to give roughly the mean we would want.
+    let meanp = (p1 + p2) / 2;
+    let muGuess;
+    if (Math.abs(meanp - 0.5) < 0.2) {
+      let meanx = (x1 + x2) / 2;
+      muGuess = meanx;
+    }
+    else {
+      muGuess = 1.0;
+    }
 
     let args = [x1, p1, x2, p2];
-    let guess = [Math.log(151.3), Math.log(15.69)];
-
-    let paramsOpt = [Math.exp(guess[0]), Math.exp(guess[1])];
+    let guess = [Math.log(muGuess), 1.0];
+    console.log(guess);
     let [logParams, optimSuccess] = findRootTrustRegion(quantileRootFun, guess, args=args);
 
+    let paramsOpt;
     if (optimSuccess) {
-      let alphaOpt = Math.exp(logParams[0]);
-      let betaOpt = Math.exp(logParams[1]);
+      let muOpt = Math.exp(logParams[0]);
+      let phiOpt = Math.exp(logParams[1]);
 
-      if (this.parametrization === 'mu-phi') {
-        paramsOpt = [alphaOpt, alphaOpt / betaOpt];
-      } else if (this.parametrization === 'alpha-p') {
-        paramsOpt = [alphaOpt, betaOpt / (1 + betaOpt)];
-      } else if (this.parametrization === 'r-b') {
-        paramsOpt = [alphaOpt, 1 / betaOpt];
-      } else {
-        paramsOpt = [alphaOpt, betaOpt];
-      } 
+      // Attempt to drive phi down as far as possible.
+      if (phiOpt > 1) {
+
+        // Function to compute mu for a given value of phi attempting to hit upper quantile      
+        const muGivenPhi = (phi, x, p) => {
+          dist = new NegativeBinomialDistribution('mu-phi');
+
+          // Function to find mu that hits quantile, with mu transformed to lie between 0 and 1
+          const rootFun = (xi, phi, x, p) => { 
+            if (xi === 1) return p;
+            if (xi === 0) return p - 1;
+            return p - this.cdfSingleValue(x, [xi / (1 - xi), phi], 'mu-phi');
+          }
+
+          let xiOpt = brentSolve(rootFun, 0.0, 1.0, [phi, x, p]);
+          let optimSuccess = xiOpt != null;
+          
+          return [xiOpt / (1 - xiOpt), optimSuccess];
+        }
+
+        // Function to choose a phi, compute mu to hit upper quantile, and then check that both lower
+        // and upper quantile were hit.
+        const hitQuantiles = (phi, x1, p1, x2, p2) => {
+          let [muAdj, rootFindSuccess] = muGivenPhi(phi, x2, p2);
+
+          if (rootFindSuccess) {
+            let [q1, q2] = this.ppf([p1, p2], [muAdj, phi], 'mu-phi');
+
+            if (q1 === x1 && q2 === x2) return 1;
+            else return -1;
+          } else {
+            return -1;
+          }
+        } 
+
+        if (hitQuantiles(1.0) === 1) {
+          phiOpt = 1.0;
+          let [muAdj, rootFindSuccess] = muGivenPhi(phiOpt, x2, p2);
+          muOpt = muAdj;
+        }
+        else {
+          let phiAdj = bisectionSolve(hitQuantiles, 1.0, phiOpt, [x1, p1, x2, p2]);
+          if (phiAdj != null) {
+            phiOpt = phiAdj;
+            let [muAdj, rootFindSuccess] = muGivenPhi(phiOpt, x2, p2);
+            muOpt = muAdj;
+          }
+        }
+      }
+
+      paramsOpt = this.convertParams([muOpt, phiOpt], 'mu-phi', this.parametrization);
+    } else { // Try Poisson with upper
+      let pois = new PoissonDistribution();
+      let [paramsPois, optimSuccessPois] = pois.quantileSet([x2], [p2]);
+
+      if (optimSuccessPois) {
+        let poisQuants = pois.ppf([p1, p2], paramsPois);
+        if (poisQuants[0] === x1 && poisQuants[1] === x2) {
+          let errText;
+          if (this.parametrization == 'alpha-beta'|| this.parametrization == 'alpha-p') {
+            errText = 'Use Poisson (α → ∞ limit) with λ = ' + paramsPois[0].toPrecision(4);
+          }
+          else if (this.parametrization == 'mu-phi') {
+            errText = 'Use Poisson (φ → ∞ limit) with λ = ' + paramsPois[0].toPrecision(4);
+          }
+          else if (this.parametrization == 'r-b') {
+            errText = 'Use Poisson (r → ∞ limit) with λ = ' + paramsPois[0].toPrecision(4);
+          }
+          throw new Error(errText);
+        }
+        // Otherwise, failed with Poisson.
+      }
+      paramsOpt = [];
     }
 
     return [paramsOpt, optimSuccess];
-
-  //   let paramsOpt = [Math.exp(guess[0]), Math.exp(guess[1])];
-  //   if (optimSuccess) {
-  //     let alphaOpt = Math.exp(logParams[0]);
-  //     let betaOpt = Math.exp(logParams[1]);
-
-  //     if (this.parametrization === 'mu-phi') {
-  //       paramsOpt = [alphaOpt, alphaOpt / betaOpt];
-  //     } else if (this.parametrization === 'alpha-p') {
-  //       paramsOpt = [alphaOpt, betaOpt / (1 + betaOpt)];
-  //     } else if (this.parametrization === 'r-b') {
-  //       paramsOpt = [alphaOpt, 1 / betaOpt];
-  //     } else {
-  //       paramsOpt = [alphaOpt, betaOpt];
-  //     } 
-  //   } else if (x2 - x1 < 20) {
-
-  //   }
-
-  //   return [paramsOpt, optimSuccess];
   }
-
 }
 
 
@@ -1114,7 +1248,7 @@ class PoissonDistribution extends DiscreteUnivariateDistribution {
     if (x1 === 0 && p1 === 1) return [[0.0], true];
 
     // Root finding function for quantile using transformation to maintain positivity
-    let rootFun = (xi) => {
+    const rootFun = (xi) => {
       if (xi === 1) return p1;
       return p1 - this.cdfSingleValue(x1, [xi / (1 - xi)]);
     }
@@ -1769,7 +1903,16 @@ class HalfStudentTDistribution extends ContinuousUnivariateDistribution {
   }
 
   defaultXRange(params) {
-    return [params[0], this.ppf(0.999, params)];
+    // Adjust default range depending on weight of tail
+    let [nu, mu, sigma] = params.slice(0, 3);
+    let p2;
+
+    if (nu < 2) p2 = 0.95;
+    else if (nu < 4) p2 = 0.99;
+    else if (nu < 10) p2 = 0.995;
+    else p2 = 0.999;
+
+    return [params[1], this.ppf(p2, params)];
   }
 
   quantileSet(x, p, extraParams) {
@@ -2449,6 +2592,202 @@ class UniformDistribution extends ContinuousUnivariateDistribution {
   }
 }
 
+class VonMisesDistribution extends ContinuousUnivariateDistribution {
+  // Only add parametrization argument to constructor() and super() in the next two lines
+  // if you need to define it (i.e., more than one possibility)
+  constructor() {
+    super();
+
+    // Name of distribution
+    this.name = 'Von Mises';
+
+    // Name of independent variable (used in quantile setter)
+    this.varName = 'y';
+
+    // Maximum allowed min and max of the distribution, regardless of params
+    this.hardMin = -Math.PI;
+    this.hardMax = Math.PI;
+
+    // Parameter names, in order of params
+    this.paramNames = ['μ', 'κ'];
+
+    // Parameters that are fixed in quantile setting
+    this.fixedParams = [];
+
+    // Trigger computing active and fixed indices for quantile setting
+    super.generateActiveFixedInds()
+  }
+
+  xMin(params) {
+    return this.hardMin;
+  }
+
+  xMax(params) {
+    return this.hardMax;
+  }
+
+  pdfSingleValue(x, params) {
+    let [mu, kappa] = params.slice(0, 2);
+
+    return Math.exp(kappa * cosm1(x - mu)) / (2 * Math.PI * besseli0(kappa, true));
+  }
+
+  cdfSingleValueNormalApprox(x, params) {
+    // CDF approximating the distribution as Normal (sum three Normals together to handle periodicity)
+    let [mu, kappa] = params.slice(0, 2);
+    let sigma = 1.0 / Math.sqrt(kappa);
+    let twopi = 2.0 * Math.PI;
+
+    let normal = new NormalDistribution();
+    let result = normal.cdfSingleValue(x, [mu - twopi, sigma]);
+    result -= normal.cdfSingleValue(-Math.PI, [mu - twopi, sigma]);
+    result += normal.cdfSingleValue(x, [mu, sigma]);
+    result -= normal.cdfSingleValue(-Math.PI, [mu, sigma]);
+    result += normal.cdfSingleValue(x, [mu + twopi, sigma]);
+    result -= normal.cdfSingleValue(-Math.PI, [mu + twopi, sigma]);
+
+    return result
+  }
+
+  cdfSingleValue(x, params) {
+    let [mu, kappa] = params.slice(0, 2);
+    let result;
+
+    if (isclose(x, this.hardMin)) result = 0;
+    else if (isclose(x, this.hardMax)) result = 1;
+    else if (kappa > 50) {
+      result = this.cdfSingleValueNormalApprox(x, params);
+    } else {
+      // Just do numerical quadrature to get CDF.
+      let nChebPoints = 100;
+
+      let f = (x) => this.pdfSingleValue(x, params);
+      result = clenshawCurtisIntegrate(f, this.hardMin, x, nChebPoints);
+    }
+
+    return result;
+  }
+
+  // This function works for when mu = 0, but not otherwise.
+  cdfSingleValueForMu0(x, params) {
+    let [mu, kappa] = params.slice(0, 2);
+
+    if (!isclose(mu, 0)) {
+      throw new Error("cdfSingleValueFor Mu0 only works for µ = 0.")
+    }
+
+    let vonMisesSeries = (k, y, p) => {
+      let s = Math.sin(y);
+      let c = Math.cos(y);
+      let sn = Math.sin(p * y);
+      let cn = Math.cos(p * y);
+      let R = 0;
+      let V = 0;
+
+      for (let n = p - 1; n > 0; n--) {
+        [sn, cn] = [sn * c - cn * s, cn * c + sn * s];
+        R = 1.0 / (2 * n / k + R);
+        V = R * (sn / n + V);
+      }
+
+      return 0.5 + y / (2 * Math.PI) + V / Math.PI;
+    } 
+
+    let vonMisesNormalApprox = (k, y) => {
+      let b = Math.sqrt(2 * Math.PI) / besseli0(k, true);
+      let z = b * Math.sin(y / 2.0)
+
+      return (1 + erf(z / Math.sqrt(2))) / 2;
+    }
+
+    // Uncenter
+    let y = x - mu;
+
+    // Convert input to list between 0 and 2π.
+    let iy = Math.round(y / (2.0 * Math.PI))
+    y -= iy * (2 * Math.PI)
+
+    // Constants
+    let CK = 50;
+    let [a1, a2, a3, a4] = [28.0, 0.5, 100.0, 5.0];
+
+    // Case there Normal approximation works
+    let result;
+    if (kappa >= CK) result = vonMisesNormalApprox(kappa, y);
+    else {
+    let p = Math.floor(1 + a1 + a2 * kappa - a3 / (kappa + a4));
+        result = vonMisesSeries(kappa, y, p)
+        result = result < 0 ? 0 : result > 1 ? 1 : result;
+    }
+
+    return result;
+  }
+
+  ppfSingleValue(p, params) {
+    if (p == 0) return 0.0;
+    if (p == 1) return 2.0 * Math.PI;
+
+    // Root finding function for ppf
+    let rootFun = (x, params, p) => p - this.cdfSingleValue(x, params);
+    
+    let result = brentSolve(rootFun, this.hardMin, this.hardMax, [params, p]);
+
+    if (result === null) return 0.0;
+    else return result;
+  }
+
+  defaultXRange(params) {
+    return [this.hardMin, this.hardMax];
+  }
+
+  quantileSet(x, p) {
+    let [x1, x2] = x.slice(0, 2);
+    let [p1, p2] = p.slice(0, 2);
+
+    if (x1 <= -Math.PI || x1 >= Math.PI || x2 <= -Math.PI || x2 >= Math.PI) {
+      throw new Error("lower and upper " + this.varName + " must be in interval (-π and π).")
+    }
+
+    // Root finding function using log of scale parameter to enforce positivity
+    const quantileRootFun = (params, x1, p1, x2, p2) => {
+      // params[0] can go from -inf to inf,with mu going from -pi to pi
+      let mu = Math.PI * (2 / (1 + Math.exp(-params[0])) - 1);
+      let kappa = Math.exp(params[1]);
+
+      let r1 = this.cdfSingleValue(x1, [mu, kappa]) - p1;
+      let r2 = this.cdfSingleValue(x2, [mu, kappa]) - p2;
+
+      return [r1, r2];
+    };
+
+    // Obtain a guess based on Normal approximation
+    let normal = new NormalDistribution();
+    let [paramsOpt, optimSuccess] = normal.quantileSet(x, p);
+    let [muGuess, sigmaGuess] = paramsOpt;
+    let guess;
+    if (optimSuccess && muGuess > -Math.PI && muGuess < Math.PI) {
+      guess = [Math.log((Math.PI + muGuess) / (Math.PI - muGuess)), -2 * Math.log(sigmaGuess)];
+    }
+    else {
+      guess = [0.0, 0.0];
+    }
+
+    // Now solve from guess
+    let args = [x1, p1, x2, p2];
+    [paramsOpt, optimSuccess] = findRootTrustRegion(
+      quantileRootFun, 
+      guess, 
+      args, 
+      jacCentralDiff,
+      0.00001,  /* Have to relax the tolerance because of Clenshaw_Curtis error */
+      1000      /* Take fewer steps */
+    );
+    paramsOpt = [Math.PI * (2 / (1 + Math.exp(-paramsOpt[0])) - 1), Math.exp(paramsOpt[1])];
+
+    return [paramsOpt, optimSuccess];
+  }
+}
+
 
 class WeibullDistribution extends ContinuousUnivariateDistribution {
   constructor() {
@@ -2566,6 +2905,7 @@ module.exports = {
   ParetoDistribution,
   StudentTDistribution,
   UniformDistribution,
+  VonMisesDistribution,
   WeibullDistribution,
 }
 

@@ -180,6 +180,34 @@ function doglegStep(JTJ, JTr, normJTr, delta) {
 }
 
 /** 
+ * Find a root of a scalar function f(x) using bisection.
+ * @param {function} f - function we are funding the root of with call signature f(x, ...args)
+ * @param {float} lower - lower bound for root
+ * @param {float} upper - upper bound for root
+ * @param {array} args - arguments to pass to f
+ * @param {float} tol - tolerance for convergence
+ * @param {int} maxIter - maximum of Newton steps to take
+ */
+function bisectionSolve(f, lower, upper, args=[], tol=1e-8, maxIter=1000) {
+	// Fail because didn't cross zero at interval
+  if (f(lower, ...args) * f(upper, ...args) >= 0) return null;
+
+  let mid = lower;
+  for (let i = 0; i < maxIter; i++) {
+    mid = (lower + upper) / 2;
+    let fMid = f(mid, ...args);
+
+    if (fMid === 0 || (upper - lower) / 2 < tol) return mid;
+
+    if (fMid * f(lower, ...args) > 0) lower = mid;
+    else upper = mid;
+  }
+
+  return mid;
+}
+
+
+/** 
  * Find a root of a scalar function f(x) using Newton's method.
  * @param {float} x0 - guess for root location
  * @param {function} f - function we are funding the root of with call signature f(x, ...args)
@@ -274,6 +302,7 @@ function secantSolve(x0, f, args=[], tol=1e-8, maxIter=200, epsilon=1e-14, h=1e-
  * @param {function} f - function we are funding the root of with call signature f(x, ...args)
  * @param {float} lower - lower bound for root
  * @param {float} upper - upper bound for root
+ * @param {array} args - arguments to pass to f
  * @param {float} tol - tolerance for convergence
  * @param {int} maxIter - maximum of Newton steps to take
  */
@@ -374,4 +403,4 @@ function brentSolve(f, lower, upper, args=[], tol=1e-8, maxIter=1000) {
 }
 
 
-module.exports = { jacCentralDiff, findRootTrustRegion, computeRho, checkTol, doglegStep, brentSolve, secantSolve, newtonSolve };
+module.exports = { jacCentralDiff, findRootTrustRegion, computeRho, checkTol, doglegStep, bisectionSolve, brentSolve, secantSolve, newtonSolve };

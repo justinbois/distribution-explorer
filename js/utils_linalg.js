@@ -132,7 +132,7 @@ function absVector(v) {
  */
 function dot(v1, v2) {
   const n = v1.length;
-  var result = 0.0;
+  let result = 0.0;
   for (let i = 0; i < n; i++) result += v1[i] * v2[i];
 
   return result;

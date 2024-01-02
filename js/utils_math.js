@@ -399,6 +399,228 @@ function gammaincL(x, s, regularized) {
   return pws * ft / s;
 }
 
+function chbevl(x, A) {
+  // Evaluate a Chebyshev polynomial at x with coefficents A.
+  // Based on the cephes library (https://www.netlib.org/cephes/),
+  // Copyright 1984 - 1992 by Stephen L. Moshier, from the book
+  // Moshier, Methods and Programs for Mathematical Functions, Prentice-Hall, 1989.
+
+  let b0, b1, b2;
+  let n = A.length;
+  let i = n - 1;
+
+  b0 = A[0];
+  b1 = 0.0;
+
+  for (let j = 1; j <= i; j++) {
+    b2 = b1;
+    b1 = b0;
+    b0 = x * b1 - b2 + A[j];
+  }
+
+  return 0.5 * (b0 - b2);
+}
+
+function polevl(x, coef) {
+  // Evaluate a polynomial at x with coefficents coef.
+  // Based on the cephes library (https://www.netlib.org/cephes/),
+  // Copyright 1984 - 1992 by Stephen L. Moshier, from the book
+  // Moshier, Methods and Programs for Mathematical Functions, Prentice-Hall, 1989.
+
+    let result;
+    let n = coef.length;
+
+    let i = n;
+
+    result = coef[0];
+
+    for (let j = 1; j <= n; j++) {
+        result = result * x + coef[j];
+    }
+
+    return result;
+}
+
+function besseli0(x, expWeighted = false) {
+  // Based on the cephes library (https://www.netlib.org/cephes/),
+  // Copyright 1984 - 1992 by Stephen L. Moshier, from the book
+  // Moshier, Methods and Programs for Mathematical Functions, Prentice-Hall, 1989.
+  // Uses a Chebyshev interpolant.
+  let A = [
+    -4.41534164647933937950e-18,
+     3.33079451882223809783e-17,
+    -2.43127984654795469359e-16,
+     1.71539128555513303061e-15,
+    -1.16853328779934516808e-14,
+     7.67618549860493561688e-14,
+    -4.85644678311192946090e-13,
+     2.95505266312963983461e-12,
+    -1.72682629144155570723e-11,
+     9.67580903537323691224e-11,
+    -5.18979560163526290666e-10,
+     2.65982372468238665035e-9,
+    -1.30002500998624804212e-8,
+     6.04699502254191894932e-8,
+    -2.67079385394061173391e-7,
+     1.11738753912010371815e-6,
+    -4.41673835845875056359e-6,
+     1.64484480707288970893e-5,
+    -5.75419501008210370398e-5,
+     1.88502885095841655729e-4,
+    -5.76375574538582365885e-4,
+     1.63947561694133579842e-3,
+    -4.32430999505057594430e-3,
+     1.05464603945949983183e-2,
+    -2.37374148058994688156e-2,
+     4.93052842396707084878e-2,
+    -9.49010970480476444210e-2,
+     1.71620901522208775349e-1,
+    -3.04682672343198398683e-1,
+     6.76795274409476084995e-1
+  ];
+
+  let B = [
+    -7.23318048787475395456e-18,
+    -4.83050448594418207126e-18,
+     4.46562142029675999901e-17,
+     3.46122286769746109310e-17,
+    -2.82762398051658348494e-16,
+    -3.42548561967721913462e-16,
+     1.77256013305652638360e-15,
+     3.81168066935262242075e-15,
+    -9.55484669882830764870e-15,
+    -4.15056934728722208663e-14,
+     1.54008621752140982691e-14,
+     3.85277838274214270114e-13,
+     7.18012445138366623367e-13,
+    -1.79417853150680611778e-12,
+    -1.32158118404477131188e-11,
+    -3.14991652796324136454e-11,
+     1.18891471078464383424e-11,
+     4.94060238822496958910e-10,
+     3.39623202570838634515e-9,
+     2.26666899049817806459e-8,
+     2.04891858946906374183e-7,
+     2.89137052083475648297e-6,
+     6.88975834691682398426e-5,
+     3.36911647825569408990e-3,
+     8.04490411014108831608e-1
+  ];
+
+  if ( x < 0 ) x = -x;
+
+  let result;
+  if (x <= 8.0) {
+    let y = x / 2.0 - 2.0;
+    result = chbevl(y, A);
+  } else {
+    result = chbevl(32.0 / x - 2.0, B) / Math.sqrt(x)
+  }
+
+  if (expWeighted) return result;
+  else return Math.exp(x) * result;
+}
+
+function cosm1(x) {
+  // Based on the cephes library (https://www.netlib.org/cephes/),
+  // Copyright 1984 - 1992 by Stephen L. Moshier, from the book
+  // Moshier, Methods and Programs for Mathematical Functions, Prentice-Hall, 1989.
+  //
+  // If x is small, appoximates cos(x) - 1 by the first several terms in series expansion.
+  let coeffs = [
+     4.7377507964246204691685E-14,
+    -1.1470284843425359765671E-11,
+     2.0876754287081521758361E-9,
+    -2.7557319214999787979814E-7,
+     2.4801587301570552304991E-5,
+    -1.3888888888888872993737E-3,
+     4.1666666666666666609054E-2
+   ];
+
+  let quarterPi = Math.PI / 4;
+
+  if (x < quarterPi || x > quarterPi) return Math.cos(x) - 1.0;
+
+  let x2 = x * x;
+  return -0.5 * x2 + x2 * x2 * polevl(x2, coeffs);
+}
+
+function chebPoints(n, low = -1, high = 1) {
+  // Chebyshev points going from 1 to -1
+  let points = Array.from({ length: n }, (_, i) => Math.cos(Math.PI * i / (n - 1)));
+
+  // Shift and scale
+  let m = (high - low) / 2.0;
+  let b = (high + low) / 2.0;
+
+  points = points.map((x) => m * x + b);
+
+  return points;
+}
+
+
+function clenshawCurtisWeights(n) {
+    n -= 1; // Adjust for zero-based indexing
+
+    const theta = Array.from({ length: n + 1 }, (_, i) => Math.PI * i / n);
+    let w = new Array(n + 1).fill(0);
+    let v = new Array(n - 1).fill(1);
+
+    if (n % 2 === 0) {
+        w[0] = 1.0 / (n ** 2 - 1);
+        w[n] = w[0];
+        for (let k = 1; k < n / 2; k++) {
+            for (let j = 1; j < n; j++) {
+                v[j - 1] -= 2.0 * Math.cos(2.0 * k * theta[j]) / (4.0 * k ** 2 - 1);
+            }
+        }
+        for (let j = 1; j < n; j++) {
+            v[j - 1] -= Math.cos(n * theta[j]) / (n ** 2 - 1);
+        }
+    } else {
+        w[0] = 1.0 / n ** 2;
+        w[n] = w[0];
+        for (let k = 1; k <= (n - 1) / 2; k++) {
+            for (let j = 1; j < n; j++) {
+                v[j - 1] -= 2.0 * Math.cos(2.0 * k * theta[j]) / (4.0 * k ** 2 - 1);
+            }
+        }
+    }
+
+    for (let j = 1; j < n; j++) {
+        w[j] = 2.0 * v[j - 1] / n;
+    }
+
+    return w;
+}
+
+
+function clenshawCurtisIntegrate(f, a, b, n = 100, args = [], weights = undefined) {
+  // Numerically integrate a function from a to b using n Chebyshev points
+  // If weights is given, uses those as Clenshaw-Curtis weights, assuming
+  // they have been set up properly for the domain of integration.
+
+  if (weights === undefined) {
+    // Get Clenshaw-Curtis weights
+    let ccWeights = clenshawCurtisWeights(n);
+
+    // Rescale for the size of the integration domain
+    weights = ccWeights.map((x) => (b - a) / 2.0 * x);
+  }
+
+  // Generate Chebyshev points from 1 to -1
+  let x = chebPoints(n);
+
+  // Center and scale points for integration
+  x = x.map((x) => (b - a) / 2.0 * x + (b + a) / 2.0);
+
+  // Evaluate f at the points
+  let fVals = x.map((x) => f(x, ...args));
+
+  // Compute the integral
+  return dot(weights, fVals);
+}
+
 
 function lnfactorial(n) {
   if (n > 254) { // Use Stirling's approximation
@@ -666,4 +888,4 @@ function lnfactorial(n) {
 }
 
 
-module.exports = { isclose, isone, iszero, linspace, logspace, meshgrid, arange, logit, log1p, erf, erfinv, lnchoice, lnbeta, betacf, regularizedIncompleteBeta, incompleteBeta, lngamma, gammaincU, gammaincL, lnfactorial };
+module.exports = { isclose, isone, iszero, linspace, logspace, meshgrid, arange, logit, log1p, erf, erfinv, lnchoice, lnbeta, betacf, regularizedIncompleteBeta, incompleteBeta, lngamma, gammaincU, gammaincL, clenshawCurtisWeights, clenshawCurtisIntegrate, chebPoints, lnfactorial, chbevl, besseli0, cosm1 };

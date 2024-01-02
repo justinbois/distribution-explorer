@@ -148,7 +148,7 @@ function updateDiscretePMFandCDF(source_p, source_c, xRange, sliders) {
 
   // Update the PMF and CDF
   source_p.data['y_p'] = dist.pmf(x_p, params);
-  source_c.data['y_c'] = dist.cdfForPlotting(x_c[0], x_c[x_c.length - 1], params, dist.xMin(params));
+  source_c.data['y_c'] = dist.cdfForPlotting(x_c[0], x_c[x_c.length - 1], params);
 
   source_p.change.emit();
   source_c.change.emit();
@@ -241,7 +241,6 @@ function quantileSetter(xBoxes, pBoxes, quantileSetterDiv, sliders, startBoxes, 
       // Obtain limits of x-axis
       let [x1, x2] = dist.defaultXRange(params);
 
-      // Set the new x_range.
       p_p.x_range.start = x1;
       p_p.x_range.end = x2;
 
