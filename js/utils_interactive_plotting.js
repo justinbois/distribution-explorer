@@ -17,6 +17,9 @@ function paramsFromSliders(sliders) {
 function paramsFromBoxes(boxes) {
   let params = [];
   for (let box of boxes) {
+    if (isNaN(box.value)) {
+      throw new Error(box.value + ' is not a valid number.');
+    }
     params.push(Number(box.value));
   }
 
@@ -179,14 +182,20 @@ function quantileSetter(xBoxes, pBoxes, quantileSetterDiv, sliders, startBoxes, 
   triggerCallbacks.active = false;
 
   // Extract quantiles and desired targets
-  let x = paramsFromBoxes(xBoxes);
-  let p = paramsFromBoxes(pBoxes);
+  let inputOk;
+  try {
+    var x = paramsFromBoxes(xBoxes);
+    var p = paramsFromBoxes(pBoxes);
 
-  // Obtain parameter values
-  let params = paramsFromSliders(sliders);
+    // Obtain parameter values
+    var params = paramsFromSliders(sliders);
 
-  // Make sure the input is ok.
-  let inputOk = checkQuantileInput(x, p, dist.hardMin, dist.hardMax, dist.varName, quantileSetterDiv);
+    // Make sure the input is ok.
+    inputOk = checkQuantileInput(x, p, dist.hardMin, dist.hardMax, dist.varName, quantileSetterDiv);
+  } catch (e) {
+    quantileSetterDiv.text = '<p style="color:tomato;">' + e.message; + '</p>';
+    inputOk = false;
+  }
 
   if (inputOk) {
     // Extra parameters to be passed into quantileSet
@@ -225,18 +234,39 @@ function quantileSetter(xBoxes, pBoxes, quantileSetterDiv, sliders, startBoxes, 
     quantileSetterDiv.text = text;
 
     if (optimSuccess) {
-      // Update slider ranges to put parameter values in middle.
-      for (let i = 0; i < optimParams.length; i++ ){
-        if (sliders[dist.activeParamsInds[i]].start > optimParams[i] || sliders[dist.activeParamsInds[i]].end < optimParams[i]) {
-          startBoxes[dist.activeParamsInds[i]].value = (4 * optimParams[i] / 1001).toPrecision(4);
-          endBoxes[dist.activeParamsInds[i]].value = (4 * optimParams[i]).toPrecision(4);        
+      // Build optimal parameter values
+      let params = [];
+      let aInd = 0;
+      for (let i = 0; i < sliders.length; i++) {
+        if (dist.activeParamsInds.includes(i)) {
+          params.push(optimParams[aInd]);
+
+          // Set slider value
+          sliders[i].value = optimParams[aInd];
+
+          aInd += 1;
+        } else { // Slider is fixed
+          params.push(sliders[i].value);
         }
-        sliders[dist.activeParamsInds[i]].value = optimParams[i];
       }
 
-      // Reset the view so the PDF/CDF are clearly displayed.
-      // re-obtain parameter values
-      params = paramsFromSliders(sliders); 
+      // Update slider ranges to put parameter values in middle.
+      for (let i = 0; i < optimParams.length; i++ ) {
+        if (sliders[dist.activeParamsInds[i]].start > optimParams[i] || sliders[dist.activeParamsInds[i]].end < optimParams[i]) {
+          // Set location parameter or parameter that can take neg. values range 95% of ppf range
+          if (dist.locationParamInd === dist.activeParamsInds[i] || dist.paramMin[dist.activeParamsInds[i]] < 0) {
+            let width = (dist.ppf(0.975, params) - dist.ppf(0.025, params)) / 2;
+            startBoxes[dist.activeParamsInds[i]].value = (optimParams[i] - width).toPrecision(4);
+            endBoxes[dist.activeParamsInds[i]].value = (optimParams[i] + width).toPrecision(4);
+          } else {
+            startBoxes[dist.activeParamsInds[i]].value = (4 * optimParams[i] / 1001).toPrecision(4);
+            endBoxes[dist.activeParamsInds[i]].value = (4 * optimParams[i]).toPrecision(4);
+          }
+        }
+        // Set slider range
+        sliders[dist.activeParamsInds[i]].start = Number(startBoxes[dist.activeParamsInds[i]].value);
+        sliders[dist.activeParamsInds[i]].end = Number(endBoxes[dist.activeParamsInds[i]].value);
+      }
 
       // Obtain limits of x-axis
       let [x1, x2] = dist.defaultXRange(params);

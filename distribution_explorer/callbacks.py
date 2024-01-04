@@ -24,10 +24,28 @@ class UnivariateDistribution {
     this.paramNames = [];
 
     
+    this.locationParam = undefined;
+    this.locatonParamIndex = undefined;
+
+    
+    this.paramMin = [];
+
+    
+    this.paramMax = [];
+
+    
     this.fixedParams = [];
 
     
-    this.epsilon = 1.0e-8
+    this.epsilon = 1.0e-8;
+  }
+
+  generateLocationParamIndex() {
+    if (this.locationParam === undefined) {
+      this.locationParamInd = undefined;
+    } else {
+      this.locationParamInd = this.paramNames.indexOf(this.locationParam);
+    }
   }
 
   generateActiveFixedInds() {
@@ -252,6 +270,12 @@ class TemplateDiscreteUnivariateDistribution extends DiscreteUnivariateDistribut
     this.paramNames = [];
 
     
+    this.paramMin = [];
+
+    
+    this.paramMax = [];
+
+    
     this.fixedParams = [];
 
     
@@ -303,10 +327,22 @@ class TemplateContinuousUnivariateDistribution extends ContinuousUnivariateDistr
     this.paramNames = [];
 
     
+    this.locationParam = undefined;
+
+    
+    this.paramMin = [];
+
+    
+    this.paramMax = [];
+
+    
     this.fixedParams = [];
 
     
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    
+    super.generateLocationParamIndex();
 
     
   }
@@ -359,6 +395,12 @@ class BernoulliDistribution extends DiscreteUnivariateDistribution {
 
     
     this.paramNames = ['θ'];
+
+    
+    this.paramMin = [0.0];
+
+    
+    this.paramMax = [1.0];
 
     
     this.fixedParams = [];
@@ -423,6 +465,12 @@ class BetaBinomialDistribution extends DiscreteUnivariateDistribution {
     this.paramNames = ['N', 'α', 'β'];
 
     
+    this.paramMin = [0, 0.0, 0.0];
+
+    
+    this.paramMax = [Infinity, 1.0, 1.0];
+
+    
     this.fixedParams = ['N'];
 
     
@@ -476,6 +524,12 @@ class BinomialDistribution extends DiscreteUnivariateDistribution {
 
     
     this.paramNames = ['N', 'θ'];
+
+    
+    this.paramMin = [0, 0.0];
+
+    
+    this.paramMax = [Infinity, 1.0];
 
     
     this.fixedParams = ['N'];
@@ -580,6 +634,12 @@ class CategoricalDistribution extends DiscreteUnivariateDistribution {
     this.paramNames = ['θ1', 'θ2', 'θ3'];
 
     
+    this.paramMin = [0.0, 0.0, 0.0];
+
+    
+    this.paramMax = [1.0, 1.0, 1.0];
+
+    
     this.fixedParams = [];
 
     
@@ -652,6 +712,12 @@ class DiscreteUniformDistribution extends DiscreteUnivariateDistribution {
     this.paramNames = ['low', 'high'];
 
     
+    this.paramMin = [-Infinity, -Infinity];
+
+    
+    this.paramMax = [Infinity, Infinity];
+
+    
     this.fixedParams = [];
 
     
@@ -705,6 +771,12 @@ class GeometricDistribution extends DiscreteUnivariateDistribution {
 
     
     this.paramNames = ['θ'];
+
+    
+    this.paramMin = [0.0];
+
+    
+    this.paramMax = [1.0];
 
     
     this.fixedParams = [];
@@ -799,6 +871,12 @@ class HypergeometricDistribution extends DiscreteUnivariateDistribution {
     this.paramNames = ['N', 'a', 'b'];
 
     
+    this.paramMin = [0, 0, 0];
+
+    
+    this.paramMax = [Infinity, Infinity, Infinity];
+
+    
     this.fixedParams = ['N'];
 
     
@@ -852,22 +930,32 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
     
     if (this.parametrization === 'alpha-beta') {
       this.paramNames = ['α', 'β'];
+      this.paramMin = [0.0, 0.0];
+      this.paramMax = [Infinity, Infinity];
       if (fixedParam === undefined) this.fixedParams = ['α'];
       else this.fixedParams = [fixedParam];
     } else if (this.parametrization === 'mu-phi') {
-      this.paramNames = ['µ', 'φ'];
+      this.paramNames = ['μ', 'φ'];
+      this.paramMin = [0.0, 0.0];
+      this.paramMax = [Infinity, Infinity];
       if (fixedParam === undefined) this.fixedParams = ['φ'];
       else this.fixedParams = [fixedParam];
     } else if (this.parametrization === 'alpha-p') {
       this.paramNames = ['α', 'p'];
+      this.paramMin = [0.0, 0.0];
+      this.paramMax = [Infinity, 1.0];
       if (fixedParam === undefined) this.fixedParams = ['α'];
       else this.fixedParams = [fixedParam];
     } else if (this.parametrization === 'r-b') {
       this.paramNames = ['r', 'b'];
+      this.paramMin = [0.0, 0.0];
+      this.paramMax = [Infinity, Infinity];
       if (fixedParam === undefined) this.fixedParams = ['r'];
       else this.fixedParams = [fixedParam];
     } else { 
       this.paramNames = ['unnamedParam1', 'unnamedParam2'];
+      this.paramMin = [0.0, 0.0];
+      this.paramMax = [Infinity, Infinity];
       if (fixedParam === undefined) this.fixedParams = ['unnamedParam1'];
       else this.fixedParams = [fixedParam];
     }
@@ -1027,8 +1115,6 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
       let r1 = this.cdfSingleValue(x1, [mu, phi], 'mu-phi') - p1;
       let r2 = this.cdfSingleValue(x2, [mu, phi], 'mu-phi') - p2;
 
-      console.log(mu, phi);
-
       return [r1, r2];
     };
 
@@ -1045,7 +1131,6 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
 
     let args = [x1, p1, x2, p2];
     let guess = [Math.log(muGuess), 1.0];
-    console.log(guess);
     let [logParams, optimSuccess] = findRootTrustRegion(quantileRootFun, guess, args=args);
 
     let paramsOpt;
@@ -1170,6 +1255,12 @@ class PoissonDistribution extends DiscreteUnivariateDistribution {
     this.paramNames = ['λ'];
 
     
+    this.paramMin = [0.0];
+
+    
+    this.paramMax = [Infinity];
+
+    
     this.fixedParams = [];
 
     
@@ -1257,6 +1348,12 @@ class BetaDistribution extends ContinuousUnivariateDistribution {
 
     
     this.paramNames = ['α', 'β'];
+
+    
+    this.paramMin = [0.0, 0.0];
+
+    
+    this.paramMax = [Infinity, Infinity];
 
     
     this.fixedParams = [];
@@ -1370,10 +1467,22 @@ class CauchyDistribution extends ContinuousUnivariateDistribution {
     this.paramNames = ['μ', 'σ'];
 
     
+    this.locationParam = 'μ';
+
+    
+    this.paramMin = [-Infinity, 0.0];
+
+    
+    this.paramMax = [Infinity, Infinity];
+
+    
     this.fixedParams = [];
 
     
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    
+    super.generateLocationParamIndex();
   }
 
   xMin(params) {
@@ -1441,6 +1550,12 @@ class ExponentialDistribution extends ContinuousUnivariateDistribution {
 
     
     this.paramNames = ['β'];
+
+    
+    this.paramMin = [0.0];
+
+    
+    this.paramMax = [Infinity];
 
     
     this.fixedParams = [];
@@ -1522,6 +1637,12 @@ class GammaDistribution extends ContinuousUnivariateDistribution {
 
     
     this.paramNames = ['α', 'β'];
+
+    
+    this.paramMin = [0.0, 0.0];
+
+    
+    this.paramMax = [Infinity, Infinity];
 
     
     this.fixedParams = [];
@@ -1691,13 +1812,25 @@ class HalfCauchyDistribution extends ContinuousUnivariateDistribution {
     this.hardMax = Infinity;
 
     
-    this.paramNames = ['µ', 'σ'];
+    this.paramNames = ['μ', 'σ'];
 
     
-    this.fixedParams = ['µ'];
+    this.locationParam = 'μ';
 
     
-    super.generateActiveFixedInds()
+    this.paramMin = [-Infinity, 0.0];
+
+    
+    this.paramMax = [Infinity, Infinity];
+
+    
+    this.fixedParams = ['μ'];
+
+    
+    super.generateActiveFixedInds();
+
+    
+    super.generateLocationParamIndex();
   }
 
   xMin(params) {
@@ -1762,13 +1895,25 @@ class HalfNormalDistribution extends ContinuousUnivariateDistribution {
     this.hardMax = Infinity;
 
     
-    this.paramNames = ['µ', 'σ'];
+    this.paramNames = ['μ', 'σ'];
 
     
-    this.fixedParams = ['µ'];
+    this.locationParam = 'μ';
 
     
-    super.generateActiveFixedInds()
+    this.paramMin = [-Infinity, 0.0];
+
+    
+    this.paramMax = [Infinity, Infinity];
+
+    
+    this.fixedParams = ['μ'];
+
+    
+    super.generateActiveFixedInds();
+
+    
+    super.generateLocationParamIndex();
   }
 
   xMin(params) {
@@ -1836,13 +1981,25 @@ class HalfStudentTDistribution extends ContinuousUnivariateDistribution {
     this.hardMax = Infinity;
 
     
-    this.paramNames = ['ν', 'µ', 'σ'];
+    this.paramNames = ['ν', 'μ', 'σ'];
 
     
-    this.fixedParams = ['ν', 'µ'];
+    this.locationParam = 'μ';
 
     
-    super.generateActiveFixedInds()
+    this.paramMin = [-Infinity, 0.0];
+
+    
+    this.paramMax = [Infinity, Infinity];
+
+    
+    this.fixedParams = ['ν', 'μ'];
+
+    
+    super.generateActiveFixedInds();
+
+    
+    super.generateLocationParamIndex();
   }
 
   xMin(params) {
@@ -1988,6 +2145,12 @@ class InverseGammaDistribution extends ContinuousUnivariateDistribution {
     this.paramNames = ['α', 'β'];
 
     
+    this.paramMin = [0.0, 0.0];
+
+    
+    this.paramMax = [Infinity, Infinity];
+
+    
     this.fixedParams = [];
 
     
@@ -2069,10 +2232,22 @@ class LogNormalDistribution extends ContinuousUnivariateDistribution {
     this.paramNames = ['μ', 'σ'];
 
     
+    this.locationParam = 'μ';
+
+    
+    this.paramMin = [-Infinity, 0.0];
+
+    
+    this.paramMax = [Infinity, Infinity];
+
+    
     this.fixedParams = [];
 
     
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    
+    super.generateLocationParamIndex();
 }
 
   xMin(params) {
@@ -2157,10 +2332,22 @@ class NormalDistribution extends ContinuousUnivariateDistribution {
     this.paramNames = ['μ', 'σ'];
 
     
+    this.locationParam = 'μ';
+
+    
+    this.paramMin = [-Infinity, 0.0];
+
+    
+    this.paramMax = [Infinity, Infinity];
+
+    
     this.fixedParams = [];
 
     
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    
+    super.generateLocationParamIndex();
 }
 
   xMin(params) {
@@ -2236,6 +2423,12 @@ class ParetoDistribution extends ContinuousUnivariateDistribution {
 
     
     this.paramNames = ['yₘᵢₙ', 'α'];
+
+    
+    this.paramMin = [0.0, 0.0];
+
+    
+    this.paramMax = [Infinity, Infinity];
 
     
     this.fixedParams = [];
@@ -2323,10 +2516,22 @@ class StudentTDistribution extends ContinuousUnivariateDistribution {
     this.paramNames = ['ν', 'μ', 'σ'];
 
     
+    this.locationParam = 'μ';
+
+    
+    this.paramMin = [0.0, -Infinity, 0.0];
+
+    
+    this.paramMax = [Infinity, Infinity, Infinity];
+
+    
     this.fixedParams = ['ν'];
 
     
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    
+    super.generateLocationParamIndex();
   }
 
   xMin(params) {
@@ -2512,6 +2717,12 @@ class UniformDistribution extends ContinuousUnivariateDistribution {
     this.paramNames = ['α', 'β'];
 
     
+    this.paramMin = [-Infinity, -Infinity];
+
+    
+    this.paramMax = [Infinity, Infinity];
+
+    
     this.fixedParams = [];
 
     
@@ -2595,10 +2806,22 @@ class VonMisesDistribution extends ContinuousUnivariateDistribution {
     this.paramNames = ['μ', 'κ'];
 
     
+    this.locationParam = 'μ';
+
+    
+    this.paramMin = [-Math.PI, 0.0];
+
+    
+    this.paramMax = [Math.PI, Infinity];
+
+    
     this.fixedParams = [];
 
     
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    
+    super.generateLocationParamIndex();
   }
 
   xMin(params) {
@@ -2656,7 +2879,7 @@ class VonMisesDistribution extends ContinuousUnivariateDistribution {
     let [mu, kappa] = params.slice(0, 2);
 
     if (!isclose(mu, 0)) {
-      throw new Error("cdfSingleValueFor Mu0 only works for µ = 0.")
+      throw new Error("cdfSingleValueFor Mu0 only works for μ = 0.")
     }
 
     let vonMisesSeries = (k, y, p) => {
@@ -2788,6 +3011,12 @@ class WeibullDistribution extends ContinuousUnivariateDistribution {
 
     
     this.paramNames = ['α', 'σ'];
+
+    
+    this.paramMin = [0.0, 0.0];
+
+    
+    this.paramMax = [Infinity, Infinity];
 
     
     this.fixedParams = [];
@@ -4234,6 +4463,9 @@ function paramsFromSliders(sliders) {
 function paramsFromBoxes(boxes) {
   let params = [];
   for (let box of boxes) {
+    if (isNaN(box.value)) {
+      throw new Error(box.value + ' is not a valid number.');
+    }
     params.push(Number(box.value));
   }
 
@@ -4399,14 +4631,20 @@ function quantileSetter(xBoxes, pBoxes, quantileSetterDiv, sliders, startBoxes, 
   triggerCallbacks.active = false;
 
   
-  let x = paramsFromBoxes(xBoxes);
-  let p = paramsFromBoxes(pBoxes);
+  let inputOk;
+  try {
+    var x = paramsFromBoxes(xBoxes);
+    var p = paramsFromBoxes(pBoxes);
 
-  
-  let params = paramsFromSliders(sliders);
+    
+    var params = paramsFromSliders(sliders);
 
-  
-  let inputOk = checkQuantileInput(x, p, dist.hardMin, dist.hardMax, dist.varName, quantileSetterDiv);
+    
+    inputOk = checkQuantileInput(x, p, dist.hardMin, dist.hardMax, dist.varName, quantileSetterDiv);
+  } catch (e) {
+    quantileSetterDiv.text = '<p style="color:tomato;">' + e.message; + '</p>';
+    inputOk = false;
+  }
 
   if (inputOk) {
     
@@ -4446,15 +4684,38 @@ function quantileSetter(xBoxes, pBoxes, quantileSetterDiv, sliders, startBoxes, 
 
     if (optimSuccess) {
       
-      for (let i = 0; i < optimParams.length; i++ ){
-        if (sliders[dist.activeParamsInds[i]].start > optimParams[i] || sliders[dist.activeParamsInds[i]].end < optimParams[i]) {
-          startBoxes[dist.activeParamsInds[i]].value = (4 * optimParams[i] / 1001).toPrecision(4);
-          endBoxes[dist.activeParamsInds[i]].value = (4 * optimParams[i]).toPrecision(4);        
+      let params = [];
+      let aInd = 0;
+      for (let i = 0; i < sliders.length; i++) {
+        if (dist.activeParamsInds.includes(i)) {
+          params.push(optimParams[aInd]);
+
+          
+          sliders[i].value = optimParams[aInd];
+
+          aInd += 1;
+        } else { 
+          params.push(sliders[i].value);
         }
-        sliders[dist.activeParamsInds[i]].value = optimParams[i];
       }
 
-      params = paramsFromSliders(sliders); 
+      
+      for (let i = 0; i < optimParams.length; i++ ) {
+        if (sliders[dist.activeParamsInds[i]].start > optimParams[i] || sliders[dist.activeParamsInds[i]].end < optimParams[i]) {
+          
+          if (dist.locationParamInd === dist.activeParamsInds[i] || dist.paramMin[dist.activeParamsInds[i]] < 0) {
+            let width = (dist.ppf(0.975, params) - dist.ppf(0.025, params)) / 2;
+            startBoxes[dist.activeParamsInds[i]].value = (optimParams[i] - width).toPrecision(4);
+            endBoxes[dist.activeParamsInds[i]].value = (optimParams[i] + width).toPrecision(4);
+          } else {
+            startBoxes[dist.activeParamsInds[i]].value = (4 * optimParams[i] / 1001).toPrecision(4);
+            endBoxes[dist.activeParamsInds[i]].value = (4 * optimParams[i]).toPrecision(4);
+          }
+        }
+        
+        sliders[dist.activeParamsInds[i]].start = Number(startBoxes[dist.activeParamsInds[i]].value);
+        sliders[dist.activeParamsInds[i]].end = Number(endBoxes[dist.activeParamsInds[i]].value);
+      }
 
       
       let [x1, x2] = dist.defaultXRange(params);

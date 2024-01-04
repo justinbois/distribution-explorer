@@ -1131,8 +1131,14 @@ def explore(
         p_y_axis_label = "PDF"
 
     # Lock axes for Bernoulli and Categorical
-    if dist in ["bernoulli", "categorical"] and "tools" not in kwargs:
-        kwargs["tools"] = "save"
+    # DEBUG!!
+    # For now, to avoid problem with improper redrawing after panning,
+    # disable panning and wheel zoom
+    if "tools" not in kwargs:
+        if dist in ["bernoulli", "categorical"]:
+            kwargs["tools"] = "save"
+        else:
+            kwargs['tools'] = 'reset,save'
 
     p_p = bokeh.plotting.figure(
         x_axis_label=x_axis_label,

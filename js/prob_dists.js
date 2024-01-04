@@ -19,11 +19,29 @@ class UnivariateDistribution {
     // Parameter names, in order of params
     this.paramNames = [];
 
+    // Location parameter, if any (always undefined for discrete)
+    this.locationParam = undefined;
+    this.locatonParamIndex = undefined;
+
+    // Parameter minima
+    this.paramMin = [];
+
+    // Parameter maxima
+    this.paramMax = [];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
 
     // Small number for nudging parameters
-    this.epsilon = 1.0e-8
+    this.epsilon = 1.0e-8;
+  }
+
+  generateLocationParamIndex() {
+    if (this.locationParam === undefined) {
+      this.locationParamInd = undefined;
+    } else {
+      this.locationParamInd = this.paramNames.indexOf(this.locationParam);
+    }
   }
 
   generateActiveFixedInds() {
@@ -250,6 +268,12 @@ class TemplateDiscreteUnivariateDistribution extends DiscreteUnivariateDistribut
     // Parameter names, in order of params
     this.paramNames = [];
 
+    // Parameter minima
+    this.paramMin = [];
+
+    // Parameter maxima
+    this.paramMax = [];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
 
@@ -310,11 +334,23 @@ class TemplateContinuousUnivariateDistribution extends ContinuousUnivariateDistr
     // Parameter names, in order of params
     this.paramNames = [];
 
+    // Location parameter, if any
+    this.locationParam = undefined;
+
+    // Parameter minima
+    this.paramMin = [];
+
+    // Parameter maxima
+    this.paramMax = [];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
 
     // Trigger computing active and fixed indices for quantile setting
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    // Trigger computing location parameter index
+    super.generateLocationParamIndex();
 
     // Can have more specifications in the constructor.
   }
@@ -367,6 +403,12 @@ class BernoulliDistribution extends DiscreteUnivariateDistribution {
 
     // Parameter names, in order of params
     this.paramNames = ['θ'];
+
+    // Parameter minima
+    this.paramMin = [0.0];
+
+    // Parameter maxima
+    this.paramMax = [1.0];
 
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
@@ -430,6 +472,12 @@ class BetaBinomialDistribution extends DiscreteUnivariateDistribution {
     // Parameter names, in order of params
     this.paramNames = ['N', 'α', 'β'];
 
+    // Parameter minima
+    this.paramMin = [0, 0.0, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, 1.0, 1.0];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = ['N'];
 
@@ -484,6 +532,12 @@ class BinomialDistribution extends DiscreteUnivariateDistribution {
 
     // Parameter names, in order of params
     this.paramNames = ['N', 'θ'];
+
+    // Parameter minima
+    this.paramMin = [0, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, 1.0];
 
     // Parameters that are fixed in quantile setting
     this.fixedParams = ['N'];
@@ -587,6 +641,12 @@ class CategoricalDistribution extends DiscreteUnivariateDistribution {
     // Parameter names, in order of params
     this.paramNames = ['θ1', 'θ2', 'θ3'];
 
+    // Parameter minima
+    this.paramMin = [0.0, 0.0, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [1.0, 1.0, 1.0];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
 
@@ -659,6 +719,12 @@ class DiscreteUniformDistribution extends DiscreteUnivariateDistribution {
     // Parameter names, in order of params
     this.paramNames = ['low', 'high'];
 
+    // Parameter minima
+    this.paramMin = [-Infinity, -Infinity];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
 
@@ -713,6 +779,12 @@ class GeometricDistribution extends DiscreteUnivariateDistribution {
 
     // Parameter names, in order of params
     this.paramNames = ['θ'];
+
+    // Parameter minima
+    this.paramMin = [0.0];
+
+    // Parameter maxima
+    this.paramMax = [1.0];
 
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
@@ -807,6 +879,12 @@ class HypergeometricDistribution extends DiscreteUnivariateDistribution {
     // Parameter names, in order of params
     this.paramNames = ['N', 'a', 'b'];
 
+    // Parameter minima
+    this.paramMin = [0, 0, 0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity, Infinity];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = ['N'];
 
@@ -861,22 +939,32 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
     // Parameter names, in order of params
     if (this.parametrization === 'alpha-beta') {
       this.paramNames = ['α', 'β'];
+      this.paramMin = [0.0, 0.0];
+      this.paramMax = [Infinity, Infinity];
       if (fixedParam === undefined) this.fixedParams = ['α'];
       else this.fixedParams = [fixedParam];
     } else if (this.parametrization === 'mu-phi') {
-      this.paramNames = ['µ', 'φ'];
+      this.paramNames = ['μ', 'φ'];
+      this.paramMin = [0.0, 0.0];
+      this.paramMax = [Infinity, Infinity];
       if (fixedParam === undefined) this.fixedParams = ['φ'];
       else this.fixedParams = [fixedParam];
     } else if (this.parametrization === 'alpha-p') {
       this.paramNames = ['α', 'p'];
+      this.paramMin = [0.0, 0.0];
+      this.paramMax = [Infinity, 1.0];
       if (fixedParam === undefined) this.fixedParams = ['α'];
       else this.fixedParams = [fixedParam];
     } else if (this.parametrization === 'r-b') {
       this.paramNames = ['r', 'b'];
+      this.paramMin = [0.0, 0.0];
+      this.paramMax = [Infinity, Infinity];
       if (fixedParam === undefined) this.fixedParams = ['r'];
       else this.fixedParams = [fixedParam];
     } else { // Some other, probably invalid parameters
       this.paramNames = ['unnamedParam1', 'unnamedParam2'];
+      this.paramMin = [0.0, 0.0];
+      this.paramMax = [Infinity, Infinity];
       if (fixedParam === undefined) this.fixedParams = ['unnamedParam1'];
       else this.fixedParams = [fixedParam];
     }
@@ -1047,8 +1135,6 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
       let r1 = this.cdfSingleValue(x1, [mu, phi], 'mu-phi') - p1;
       let r2 = this.cdfSingleValue(x2, [mu, phi], 'mu-phi') - p2;
 
-      console.log(mu, phi);
-
       return [r1, r2];
     };
 
@@ -1065,7 +1151,6 @@ class NegativeBinomialDistribution extends DiscreteUnivariateDistribution {
 
     let args = [x1, p1, x2, p2];
     let guess = [Math.log(muGuess), 1.0];
-    console.log(guess);
     let [logParams, optimSuccess] = findRootTrustRegion(quantileRootFun, guess, args=args);
 
     let paramsOpt;
@@ -1190,6 +1275,12 @@ class PoissonDistribution extends DiscreteUnivariateDistribution {
     // Parameter names, in order of params
     this.paramNames = ['λ'];
 
+    // Parameter minima
+    this.paramMin = [0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
 
@@ -1278,6 +1369,12 @@ class BetaDistribution extends ContinuousUnivariateDistribution {
 
     // Name of parameters (may be used in quantile setter)
     this.paramNames = ['α', 'β'];
+
+    // Parameter minima
+    this.paramMin = [0.0, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity];
 
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
@@ -1390,11 +1487,23 @@ class CauchyDistribution extends ContinuousUnivariateDistribution {
     // Name of parameters (may be used in quantile setter)
     this.paramNames = ['μ', 'σ'];
 
+    // Location parameter
+    this.locationParam = 'μ';
+
+    // Parameter minima
+    this.paramMin = [-Infinity, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
 
     // Trigger computing active and fixed indices for quantile setting
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    // Trigger computing location parameter index
+    super.generateLocationParamIndex();
   }
 
   xMin(params) {
@@ -1461,6 +1570,12 @@ class ExponentialDistribution extends ContinuousUnivariateDistribution {
 
     // Name of parameters (may be used in quantile setter)
     this.paramNames = ['β'];
+
+    // Parameter minima
+    this.paramMin = [0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity];
 
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
@@ -1541,6 +1656,12 @@ class GammaDistribution extends ContinuousUnivariateDistribution {
 
     // Name of parameters (may be used in quantile setter)
     this.paramNames = ['α', 'β'];
+
+    // Parameter minima
+    this.paramMin = [0.0, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity];
 
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
@@ -1709,13 +1830,25 @@ class HalfCauchyDistribution extends ContinuousUnivariateDistribution {
     this.hardMax = Infinity;
 
     // Parameter names, in order of params
-    this.paramNames = ['µ', 'σ'];
+    this.paramNames = ['μ', 'σ'];
+
+    // Location parameter
+    this.locationParam = 'μ';
+
+    // Parameter minima
+    this.paramMin = [-Infinity, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity];
 
     // Parameters that are fixed in quantile setting
-    this.fixedParams = ['µ'];
+    this.fixedParams = ['μ'];
 
     // Trigger computing active and fixed indices for quantile setting
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    // Trigger computing location parameter index
+    super.generateLocationParamIndex();
   }
 
   xMin(params) {
@@ -1779,13 +1912,25 @@ class HalfNormalDistribution extends ContinuousUnivariateDistribution {
     this.hardMax = Infinity;
 
     // Parameter names, in order of params
-    this.paramNames = ['µ', 'σ'];
+    this.paramNames = ['μ', 'σ'];
+
+    // Location parameter
+    this.locationParam = 'μ';
+
+    // Parameter minima
+    this.paramMin = [-Infinity, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity];
 
     // Parameters that are fixed in quantile setting
-    this.fixedParams = ['µ'];
+    this.fixedParams = ['μ'];
 
     // Trigger computing active and fixed indices for quantile setting
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    // Trigger computing location parameter index
+    super.generateLocationParamIndex();
   }
 
   xMin(params) {
@@ -1852,13 +1997,25 @@ class HalfStudentTDistribution extends ContinuousUnivariateDistribution {
     this.hardMax = Infinity;
 
     // Parameter names, in order of params
-    this.paramNames = ['ν', 'µ', 'σ'];
+    this.paramNames = ['ν', 'μ', 'σ'];
+
+    // Location parameter
+    this.locationParam = 'μ';
+
+    // Parameter minima
+    this.paramMin = [-Infinity, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity];
 
     // Parameters that are fixed in quantile setting
-    this.fixedParams = ['ν', 'µ'];
+    this.fixedParams = ['ν', 'μ'];
 
     // Trigger computing active and fixed indices for quantile setting
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    // Trigger computing location parameter index
+    super.generateLocationParamIndex();
   }
 
   xMin(params) {
@@ -2002,6 +2159,12 @@ class InverseGammaDistribution extends ContinuousUnivariateDistribution {
     // Name of parameters (may be used in quantile setter)
     this.paramNames = ['α', 'β'];
 
+    // Parameter minima
+    this.paramMin = [0.0, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
 
@@ -2083,11 +2246,23 @@ class LogNormalDistribution extends ContinuousUnivariateDistribution {
     // Name of parameters (may be used in quantile setter)
     this.paramNames = ['μ', 'σ'];
 
+    // Location parameter
+    this.locationParam = 'μ';
+
+    // Parameter minima
+    this.paramMin = [-Infinity, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
 
     // Trigger computing active and fixed indices for quantile setting
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    // Trigger computing location parameter index
+    super.generateLocationParamIndex();
 }
 
   xMin(params) {
@@ -2171,11 +2346,23 @@ class NormalDistribution extends ContinuousUnivariateDistribution {
     // Name of parameters (may be used in quantile setter)
     this.paramNames = ['μ', 'σ'];
 
+    // Location parameter
+    this.locationParam = 'μ';
+
+    // Parameter minima
+    this.paramMin = [-Infinity, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
 
     // Trigger computing active and fixed indices for quantile setting
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    // Trigger computing location parameter index
+    super.generateLocationParamIndex();
 }
 
   xMin(params) {
@@ -2251,6 +2438,12 @@ class ParetoDistribution extends ContinuousUnivariateDistribution {
 
     // Name of parameters (may be used in quantile setter)
     this.paramNames = ['yₘᵢₙ', 'α'];
+
+    // Parameter minima
+    this.paramMin = [0.0, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity];
 
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
@@ -2337,11 +2530,23 @@ class StudentTDistribution extends ContinuousUnivariateDistribution {
     // Name of parameters (may be used in quantile setter)
     this.paramNames = ['ν', 'μ', 'σ'];
 
+    // Location parameter
+    this.locationParam = 'μ';
+
+    // Parameter minima
+    this.paramMin = [0.0, -Infinity, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity, Infinity];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = ['ν'];
 
     // Trigger computing active and fixed indices for quantile setting
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    // Trigger computing location parameter index
+    super.generateLocationParamIndex();
   }
 
   xMin(params) {
@@ -2529,6 +2734,12 @@ class UniformDistribution extends ContinuousUnivariateDistribution {
     // Parameter names, in order of params
     this.paramNames = ['α', 'β'];
 
+    // Parameter minima
+    this.paramMin = [-Infinity, -Infinity];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
 
@@ -2611,11 +2822,23 @@ class VonMisesDistribution extends ContinuousUnivariateDistribution {
     // Parameter names, in order of params
     this.paramNames = ['μ', 'κ'];
 
+    // Location parameter
+    this.locationParam = 'μ';
+
+    // Parameter minima
+    this.paramMin = [-Math.PI, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Math.PI, Infinity];
+
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
 
     // Trigger computing active and fixed indices for quantile setting
-    super.generateActiveFixedInds()
+    super.generateActiveFixedInds();
+
+    // Trigger computing location parameter index
+    super.generateLocationParamIndex();
   }
 
   xMin(params) {
@@ -2673,7 +2896,7 @@ class VonMisesDistribution extends ContinuousUnivariateDistribution {
     let [mu, kappa] = params.slice(0, 2);
 
     if (!isclose(mu, 0)) {
-      throw new Error("cdfSingleValueFor Mu0 only works for µ = 0.")
+      throw new Error("cdfSingleValueFor Mu0 only works for μ = 0.")
     }
 
     let vonMisesSeries = (k, y, p) => {
@@ -2805,6 +3028,12 @@ class WeibullDistribution extends ContinuousUnivariateDistribution {
 
     // Parameter names, in order of params
     this.paramNames = ['α', 'σ'];
+
+    // Parameter minima
+    this.paramMin = [0.0, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity];
 
     // Parameters that are fixed in quantile setting
     this.fixedParams = [];
