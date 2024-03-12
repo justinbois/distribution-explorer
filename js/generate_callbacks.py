@@ -141,6 +141,10 @@ def _dependencies(code_dict):
     output["NegativeBinomialMuPhiDistribution"].append('NegativeBinomialDistribution')
     output["NegativeBinomialRBDistribution"].append('NegativeBinomialDistribution')
 
+    # Another manual one, the superclasses for different parametrizations of
+    # the Beta
+    output["BetaPhiKappaDistribution"].append('BetaDistribution')
+
     # Add in super classes for distributions
     for f, code in code_dict.items():
         if "extends UnivariateDistribution" in code:

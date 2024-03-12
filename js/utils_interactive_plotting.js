@@ -51,7 +51,7 @@ function checkQuantileInput(x, p, xMin, xMax, varName, quantileSetterDiv) {
     }
 
     if (x[i] < xMin || x[i] > xMax) {
-      let qStr = '<p style="color:tomato;">Must have ' + xMin.toString() + ' ≤ yy ≤' + xMax.toString() + '.</p\>';
+      let qStr = '<p style="color:tomato;">Must have ' + xMin.toString() + ' ≤ yy ≤ ' + xMax.toString() + '.</p\>';
       quantileSetterDiv.text = qStr.replace(/yy/g, varName);
       return false;
     }

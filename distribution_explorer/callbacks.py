@@ -1333,8 +1333,8 @@ class PoissonDistribution extends DiscreteUnivariateDistribution {
 """,
     "BetaDistribution": """
 class BetaDistribution extends ContinuousUnivariateDistribution {
-  constructor() {
-    super();
+  constructor(parametrization = 'alpha-beta') {
+    super(parametrization);
 
     
     this.name = 'Beta';
@@ -1347,7 +1347,19 @@ class BetaDistribution extends ContinuousUnivariateDistribution {
     this.hardMax = 1;
 
     
-    this.paramNames = ['α', 'β'];
+    if (this.parametrization === 'alpha-beta') {
+      this.paramNames = ['α', 'β'];
+      this.paramMin = [0.0, 0.0];
+      this.paramMax = [Infinity, Infinity];
+    } else if (this.parametrization === 'phi-kappa') {
+      this.paramNames = ['φ', 'κ'];
+      this.paramMin = [0.0, 0.0];
+      this.paramMax = [1.0, Infinity];
+    } else { 
+      this.paramNames = ['unnamedParam1', 'unnamedParam2'];
+      this.paramMin = [0.0, 0.0];
+      this.paramMax = [Infinity, Infinity];
+    }
 
     
     this.paramMin = [0.0, 0.0];
@@ -1370,8 +1382,53 @@ class BetaDistribution extends ContinuousUnivariateDistribution {
     return 1.0;
   }
 
-  pdfSingleValue(x, params) {
+  convertParams(params, from = this.parametrization, to = 'alpha-beta') {
+    if (from === to) return params;
+    else if (to === 'alpha-beta') return this.convertParamsToAlphaBeta(params, from);
+    else if (from === 'alpha-beta') return this.convertParamsFromAlphaBeta(params, to);
+    else return this.convertParamsFromAlphaBeta(this.convertParamsToAlphaBeta(params, from), to);
+  }
+
+  convertParamsToAlphaBeta(params, from = this.parametrization) {
+    
+    let alpha, beta;
+
+    if (from === 'phi-kappa') {
+      let [phi, kappa] = params.slice(0, 2);
+      alpha = phi * kappa;
+      beta = (1 - phi) * kappa;
+    } else if (from === 'alpha-beta') {
+      [alpha, beta] = params.slice(0, 2);
+    } else {
+      throw new Error('Invalid parametrization for converting. Allowed values are alpha-beta and phi-kappa');
+    }
+
+    return [alpha, beta];
+  }
+
+  convertParamsFromAlphaBeta(params, to = this.parametrization) {
+    
     let [alpha, beta] = params.slice(0, 2);
+
+    let output;
+    if (to === 'phi-kappa') {
+      let kappa = alpha + beta;
+      let phi = alpha / kappa;
+      output = [phi, kappa];
+    } else if (to === 'alpha-beta') {
+      output = [alpha, beta];
+    } else {
+      throw new Error('Invalid parametrization for converting. Allowed values are alpha-beta and phi-kappa.');
+    }
+
+    return output;
+  }
+
+  pdfSingleValue(x, params, parametrization = this.parametrization) {
+    
+    let [alpha, beta] = this.convertParamsToAlphaBeta(params, parametrization);
+
+    if (alpha <= 0 || beta <= 0) return NaN;
 
     if (x < 0 || x > 1) return NaN;
 
@@ -1401,8 +1458,9 @@ class BetaDistribution extends ContinuousUnivariateDistribution {
     return Math.exp(lnProb);
   }
 
-  cdfSingleValue(x, params) {
-    let [alpha, beta] = params.slice(0, 2);
+  cdfSingleValue(x, params, parametrization = this.parametrization) {
+    
+    let [alpha, beta] = this.convertParamsToAlphaBeta(params, parametrization);
 
     if (x <= 0) return 0.0;
     if (x >= 1) return 1.0;
@@ -1410,17 +1468,17 @@ class BetaDistribution extends ContinuousUnivariateDistribution {
     return regularizedIncompleteBeta(x, alpha, beta);
   }
 
-  ppfSingleValue(p, params) {
+  ppfSingleValue(p, params, parametrization = this.parametrization) {
     if (p == 0) return 0.0;
     if (p == 1) return 1.0;
 
     
-    let rootFun = (x, params, p) => p - this.cdfSingleValue(x, params);
+    let rootFun = (x, params, p) => p - this.cdfSingleValue(x, params, parametrization);
     
     return brentSolve(rootFun, 0.0, 1.0, [params, p]);
   }
 
-  quantileSet(x, p) {
+  quantileSet(x, p, parametrization = this.parametrization) {
     let [x1, x2] = x.slice(0, 2);
     let [p1, p2] = p.slice(0, 2);
 
@@ -1429,8 +1487,8 @@ class BetaDistribution extends ContinuousUnivariateDistribution {
       let alpha = Math.exp(params[0]);
       let beta = Math.exp(params[1]);
 
-      let r1 = this.cdfSingleValue(x1, [alpha, beta]) - p1;
-      let r2 = this.cdfSingleValue(x2, [alpha, beta]) - p2;
+      let r1 = this.cdfSingleValue(x1, [alpha, beta], 'alpha-beta') - p1;
+      let r2 = this.cdfSingleValue(x2, [alpha, beta], 'alpha-beta') - p2;
 
       return [r1, r2];
     };
@@ -1439,13 +1497,20 @@ class BetaDistribution extends ContinuousUnivariateDistribution {
     let guess = [1.0, 1.0];
     let [logParams, optimSuccess] = findRootTrustRegion(quantileRootFun, guess, args=args);
 
-    return [[Math.exp(logParams[0]), Math.exp(logParams[1])], optimSuccess];
+    return [this.convertParamsFromAlphaBeta([Math.exp(logParams[0]), Math.exp(logParams[1])], this.parametrization), optimSuccess];
   }
 
   defaultXRange(params) {
     return [0.0, 1.0];
   }
 
+}
+""",
+    "BetaPhiKappaDistribution": """
+class BetaPhiKappaDistribution extends BetaDistribution {
+  constructor() {
+    super('phi-kappa');
+  }
 }
 """,
     "CauchyDistribution": """
@@ -4493,7 +4558,7 @@ function checkQuantileInput(x, p, xMin, xMax, varName, quantileSetterDiv) {
     }
 
     if (x[i] < xMin || x[i] > xMax) {
-      let qStr = '<p style="color:tomato;">Must have ' + xMin.toString() + ' ≤ yy ≤' + xMax.toString() + '.</p\>';
+      let qStr = '<p style="color:tomato;">Must have ' + xMin.toString() + ' ≤ yy ≤ ' + xMax.toString() + '.</p\>';
       quantileSetterDiv.text = qStr.replace(/yy/g, varName);
       return false;
     }
@@ -5205,6 +5270,7 @@ _dependencies = {
     "NegativeBinomialRBDistribution": ['UnivariateDistribution', 'DiscreteUnivariateDistribution', 'NegativeBinomialDistribution', 'BinomialDistribution', 'PoissonDistribution', 'regularizedIncompleteBeta', 'lngamma', 'lnfactorial', 'findRootTrustRegion', 'bisectionSolve', 'brentSolve', 'lnchoice', 'log1p', 'betacf', 'isclose', 'gammaincU', 'transpose', 'mvMult', 'mmMult', 'vectorAdd', 'norm', 'deepCopy', 'computeRho', 'checkTol', 'doglegStep', 'jacCentralDiff', 'gammaincL', 'dot', 'zeros', 'svMult', 'quadForm', 'solvePosDef', 'modifiedCholesky', 'modifiedCholeskySolve', 'arange', 'lowerTriSolve', 'upperTriSolve'],
     "PoissonDistribution": ['UnivariateDistribution', 'DiscreteUnivariateDistribution', 'gammaincU', 'lnfactorial', 'brentSolve', 'lngamma', 'gammaincL', 'isclose'],
     "BetaDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution', 'isone', 'iszero', 'lnbeta', 'regularizedIncompleteBeta', 'findRootTrustRegion', 'brentSolve', 'isclose', 'lngamma', 'log1p', 'betacf', 'transpose', 'mvMult', 'mmMult', 'vectorAdd', 'norm', 'deepCopy', 'computeRho', 'checkTol', 'doglegStep', 'jacCentralDiff', 'dot', 'zeros', 'svMult', 'quadForm', 'solvePosDef', 'modifiedCholesky', 'modifiedCholeskySolve', 'arange', 'lowerTriSolve', 'upperTriSolve'],
+    "BetaPhiKappaDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution', 'BetaDistribution', 'isone', 'iszero', 'lnbeta', 'regularizedIncompleteBeta', 'findRootTrustRegion', 'brentSolve', 'isclose', 'lngamma', 'log1p', 'betacf', 'transpose', 'mvMult', 'mmMult', 'vectorAdd', 'norm', 'deepCopy', 'computeRho', 'checkTol', 'doglegStep', 'jacCentralDiff', 'dot', 'zeros', 'svMult', 'quadForm', 'solvePosDef', 'modifiedCholesky', 'modifiedCholeskySolve', 'arange', 'lowerTriSolve', 'upperTriSolve'],
     "CauchyDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution'],
     "ExponentialDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution'],
     "GammaDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution', 'lngamma', 'gammaincL', 'norm', 'findRootTrustRegion', 'secantSolve', 'brentSolve', 'gammaincU', 'dot', 'transpose', 'mvMult', 'mmMult', 'vectorAdd', 'deepCopy', 'computeRho', 'checkTol', 'doglegStep', 'jacCentralDiff', 'zeros', 'svMult', 'quadForm', 'solvePosDef', 'modifiedCholesky', 'modifiedCholeskySolve', 'arange', 'lowerTriSolve', 'upperTriSolve'],

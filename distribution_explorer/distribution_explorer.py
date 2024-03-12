@@ -25,6 +25,7 @@ discrete_dists = [
 
 continuous_dists = [
     "beta",
+    "beta_phi_kappa",
     "cauchy",
     "exponential",
     "gamma",
@@ -138,6 +139,11 @@ def _funs(dist):
         return st.poisson.pmf, st.poisson.cdf
     elif dist == "beta":
         return st.beta.pdf, st.beta.cdf
+    elif dist == "beta_phi_kappa":
+        return (
+            lambda x, phi, kappa: st.beta.pdf(x, phi * kappa, (1 - phi) * kappa),
+            lambda x, phi, kappa: st.beta.cdf(x, phi * kappa, (1 - phi) * kappa),
+        )
     elif dist == "cauchy":
         return st.cauchy.pdf, st.cauchy.cdf
     elif dist == "exponential":
@@ -475,6 +481,33 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
                 start=0.01,
                 end=10,
                 value=1,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+        ]
+        x_min = 0
+        x_max = 1
+        x_axis_label = "θ"
+        title = "Beta"
+    elif dist == "beta_phi_kappa":
+        params = [
+            dict(
+                name="φ",
+                start=0.001,
+                end=0.999,
+                value=0.5,
+                step=0.001,
+                is_int=False,
+                min_value="0",
+                max_value="1",
+            ),
+            dict(
+                name="κ",
+                start=0.01,
+                end=10,
+                value=2,
                 step=0.01,
                 is_int=False,
                 min_value="0",
@@ -953,6 +986,9 @@ def _compute_quantile_setter_params(dist, params, ptiles=None):
     if dist == "beta":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(st.beta.ppf(p, params[0]["value"], params[1]["value"]))
+    if dist == "beta_phi_kappa":
+        p = [0.025, 0.975] if ptiles is None else list(ptiles)
+        x = list(st.beta.ppf(p, params[0]["value"] * params[1]["value"], (1 - params[0]["value"]) * params[1]["value"]))
     if dist == "cauchy":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(st.cauchy.ppf(p, params[0]["value"], params[1]["value"]))
@@ -1167,7 +1203,7 @@ def explore(
 
     # For a Beta or uniform distribution, we want to force zero for PDF axis
     # to give appropriate scale
-    if dist in ("beta", "uniform"):
+    if dist in ("beta", "beta_phi_kappa", "uniform"):
         p_p.y_range.start = 0.0
 
     # For Bernoulli and Categorical, explicitly set p_p y_range
