@@ -1201,16 +1201,23 @@ def explore(
     # Link the axes
     p_c.x_range = p_p.x_range
 
-    # For a Beta or uniform distribution, we want to force zero for PDF axis
-    # to give appropriate scale
-    if dist in ("beta", "beta_phi_kappa", "uniform"):
-        p_p.y_range.start = 0.0
+    # We now set all y_ranges for continous distributions to start at 0
+    # The only eay of doing it specifically only for a few dists is commented out below.
+    p_p.y_range.start = 0.0
 
-    # For Bernoulli and Categorical, explicitly set p_p y_range
     if dist in ("bernoulli", "categorical"):
-        p_p.y_range = bokeh.models.Range1d(-0.04, 1.04)
+        p_p.y_range.end = 1.0
 
-    # Explicity tickers for Bernoulli and Categorical
+    # # For a Beta or uniform distribution, we want to force zero for PDF axis
+    # # to give appropriate scale
+    # if dist in ("beta", "beta_phi_kappa", "uniform"):
+    #     p_p.y_range.start = 0.0
+
+    # # For Bernoulli and Categorical, explicitly set p_p y_range
+    # if dist in ("bernoulli", "categorical"):
+    #     p_p.y_range = bokeh.models.Range1d(-0.04, 1.04)
+
+    # Explicit tickers for Bernoulli and Categorical
     if dist == "bernoulli":
         p_p.xaxis.ticker = [0, 1]
         p_c.xaxis.ticker = [0, 1]
@@ -1219,23 +1226,25 @@ def explore(
         p_c.xaxis.ticker = [1, 2, 3, 4]
 
     # Make sure CDF y_range is zero to one
-    p_c.y_range = bokeh.models.Range1d(-0.04, 1.04)
+    p_c.y_range = bokeh.models.Range1d(0.0, 1.0)
+
+    # Old way (commented out) with buffers
+    # p_c.y_range = bokeh.models.Range1d(-0.04, 1.04)
 
     # Make array of parameter values
     param_vals = np.array([param["value"] for param in params])
 
     # Set up data for plot
     if discrete:
-        x = np.arange(int(np.floor(x_min)), int(np.ceil(x_max)) + 1)
-        x_size = x[-1] - x[0]
+        x = np.arange(int(np.ceil(x_min)), int(np.floor(x_max)) + 1)
         x_c = np.empty(2 * len(x))
         x_c[::2] = x
         x_c[1::2] = x
         x_c = np.concatenate(
             (
-                (max(x[0] - 0.05 * x_size, x[0] - 0.95),),
+                (x_min,),
                 x_c,
-                (min(x[-1] + 0.05 * x_size, x[-1] + 0.95),),
+                (x_max,),
             )
         )
         x_cdf = np.concatenate(((x_c[0],), x))
@@ -1258,13 +1267,13 @@ def explore(
     source_c = bokeh.models.ColumnDataSource(data={"x": x_c, "y_c": y_c})
 
     # Plot PMF/PDF and CDF
-    p_c.line("x", "y_c", source=source_c, line_width=2)
+    p_c.line("x", "y_c", source=source_c, line_width=2, level='overlay')
     if discrete:
-        p_p.circle("x", "y_p", source=source_p, size=5)
+        p_p.scatter("x", "y_p", source=source_p, size=5, marker="circle", level='overlay')
         if p_y_axis_type != "log":
-            p_p.segment(x0="x", x1="x", y0=0, y1="y_p", source=source_p, line_width=2)
+            p_p.segment(x0="x", x1="x", y0=0, y1="y_p", source=source_p, line_width=2, level='overlay')
     else:
-        p_p.line("x", "y_p", source=source_p, line_width=2)
+        p_p.line("x", "y_p", source=source_p, line_width=2, level='overlay')
 
     # In previous versions, range padding was set to 0 for convenience.
     # Now, ranges are explicitly set.

@@ -175,23 +175,60 @@ class DiscreteUnivariateDistribution extends UnivariateDistribution {
     // so that the CDF has a staircase look. 
     params = this.scalarToArrayParams(params);
 
-    // Compute CDF by summing up to first value of x for which it is desired.
-    let cumsum = 0.0;
-    let prob;
-    for (let x = this.xMin(params, parametrization); x < xStart; x++) {
-      prob = this.pmfSingleValue(x, params, parametrization);
-      if (!isNaN(prob)) cumsum += prob;
-    }
-
     // Now start building CDF.
-    let yCDF = [];
-    for (let x = xStart; x < xEnd; x++) {
-      prob = this.pmfSingleValue(x, params, parametrization);
-      if (!isNaN(prob)) cumsum += prob;
-      yCDF.push(cumsum, cumsum);
+    let cumsum;
+    let y_c;
+    let prob;
+    if (Number.isInteger(xStart)) {
+      // Compute CDF by summing up to first value of x for which it is desired.
+      cumsum = this.cdfSingleValue(Math.floor(xStart) - 1, params, parametrization);
+
+      if (Number.isInteger(xEnd)) {
+        y_c = [cumsum];
+        for (let x = xStart; x < xEnd; x++) {
+          prob = this.pmfSingleValue(x, params, parametrization);
+          if (!isNaN(prob)) cumsum += prob;
+          y_c.push(cumsum, cumsum);
+        }
+        prob = this.pmfSingleValue(xEnd, params, parametrization);
+        if (!isNaN(prob)) cumsum += prob;
+        y_c.push(cumsum);
+      }
+      else {
+        y_c = [cumsum];
+        for (let x = xStart; x <= Math.floor(xEnd); x++) {
+          prob = this.pmfSingleValue(x, params, parametrization);
+          if (!isNaN(prob)) cumsum += prob;
+          y_c.push(cumsum, cumsum);
+        }
+      }
+    }
+    else {
+      // Compute CDF by summing up to first value of x for which it is desired.
+      cumsum = this.cdfSingleValue(Math.floor(xStart), params, parametrization);
+
+      if (Number.isInteger(xEnd)) {
+        y_c = [cumsum, cumsum];
+        for (let x = Math.ceil(xStart); x < xEnd; x++) {
+          prob = this.pmfSingleValue(x, params, parametrization);
+          if (!isNaN(prob)) cumsum += prob;
+          y_c.push(cumsum, cumsum);
+        }
+        prob = this.pmfSingleValue(xEnd, params, parametrization);
+        if (!isNaN(prob)) cumsum += prob;
+        y_c.push(cumsum);        
+      }
+      else {
+        y_c = [cumsum, cumsum];
+        for (let x = Math.ceil(xStart); x <= xEnd; x++) {
+          prob = this.pmfSingleValue(x, params, parametrization);
+          if (!isNaN(prob)) cumsum += prob;
+          y_c.push(cumsum, cumsum);
+        }
+      }    
     }
 
-    return yCDF;
+    return y_c;
   }
 
   ppfSingleValue(p, params, parametrization = this.parametrization) {
@@ -3117,10 +3154,16 @@ class WeibullDistribution extends ContinuousUnivariateDistribution {
 
   pdfSingleValue(x, params) {
     if (x < 0) return NaN;
-    if (x === 0) return 0.0;
     if (x === Infinity) return 0.0;
 
     let [alpha, sigma] = params.slice(0, 2);
+
+    if (x === 0) {
+      if (alpha > 1.0) return 0.0;
+      if (alpha < 1.0) return Infinity;
+      if (alpha == 1.0) return Math.exp(-x / sigma) / sigma;
+    }
+
 
     let logp = -Math.pow(x / sigma, alpha) + (alpha - 1) * Math.log(x) 
                 + Math.log(alpha) - alpha * Math.log(sigma);

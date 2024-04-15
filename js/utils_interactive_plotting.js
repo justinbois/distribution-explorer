@@ -31,12 +31,21 @@ function paramsFromBoxes(boxes) {
  * Set the y-ranges for PDF and CDF plots.
  */
 function setYRanges(p_p, p_c, source_p) {
-    p_c.y_range.start = -0.04;
-    p_c.y_range.end = 1.04;        
+    p_c.y_range.start = 0.0;
+    p_c.y_range.end = 1.0;        
 
     let pdfMax = source_p.data['y_p'];
-    p_p.y_range.start = -pdfMax * 0.04;
+    p_p.y_range.start = 0.0;
     p_p.y_range.end = 1.04 * pdfMax;
+
+    // Old way, commented out
+    // p_c.y_range.start = -0.04;
+    // p_c.y_range.end = 1.04;        
+
+    // let pdfMax = source_p.data['y_p'];
+    // p_p.y_range.start = -pdfMax * 0.04;
+    // p_p.y_range.end = 1.04 * pdfMax;
+
 }
 
 
@@ -132,15 +141,31 @@ function updateContinuousPDFandCDF(source_p, source_c, xRange, sliders) {
 
 
 function updateDiscretePMFandCDF(source_p, source_c, xRange, sliders) {
-  // Extract data range
-  let xRangeMin = Math.floor(xRange.start);
-  let xRangeMax = Math.ceil(xRange.end);
+  // Extract data range for PMF
+  let xRangeMin = Math.ceil(xRange.start);
+  let xRangeMax = Math.floor(xRange.end);
 
   // x-values to evaluate PMF and CDF
   let x_p = arange(xRangeMin, xRangeMax + 1);
 
   // Set up x-values for plotting the staircase CDF
-  let x_c = [xRangeMin - 1, ...x_p.flatMap(x => [x, x]), xRangeMax + 1];
+  let x_c;
+  if (Number.isInteger(xRange.start)) {
+    if (Number.isInteger(xRange.end)) {
+      x_c = x_p.flatMap(x => [x, x]);
+    }
+    else {
+      x_c = [...x_p.flatMap(x => [x, x]), xRange.end];
+    }
+  }
+  else {
+    if (Number.isInteger(xRange.end)) {
+      x_c = [xRange.start, ...x_p.flatMap(x => [x, x])];
+    }
+    else {
+      x_c = [xRange.start, ...x_p.flatMap(x => [x, x]), xRange.end];
+    }    
+  }
 
   // Update sources with new x-values
   source_p.data['x'] = x_p;

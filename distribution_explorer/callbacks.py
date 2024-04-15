@@ -177,22 +177,59 @@ class DiscreteUnivariateDistribution extends UnivariateDistribution {
     params = this.scalarToArrayParams(params);
 
     
-    let cumsum = 0.0;
+    let cumsum;
+    let y_c;
     let prob;
-    for (let x = this.xMin(params, parametrization); x < xStart; x++) {
-      prob = this.pmfSingleValue(x, params, parametrization);
-      if (!isNaN(prob)) cumsum += prob;
+    if (Number.isInteger(xStart)) {
+      
+      cumsum = this.cdfSingleValue(Math.floor(xStart) - 1, params, parametrization);
+
+      if (Number.isInteger(xEnd)) {
+        y_c = [cumsum];
+        for (let x = xStart; x < xEnd; x++) {
+          prob = this.pmfSingleValue(x, params, parametrization);
+          if (!isNaN(prob)) cumsum += prob;
+          y_c.push(cumsum, cumsum);
+        }
+        prob = this.pmfSingleValue(xEnd, params, parametrization);
+        if (!isNaN(prob)) cumsum += prob;
+        y_c.push(cumsum);
+      }
+      else {
+        y_c = [cumsum];
+        for (let x = xStart; x <= Math.floor(xEnd); x++) {
+          prob = this.pmfSingleValue(x, params, parametrization);
+          if (!isNaN(prob)) cumsum += prob;
+          y_c.push(cumsum, cumsum);
+        }
+      }
+    }
+    else {
+      
+      cumsum = this.cdfSingleValue(Math.floor(xStart), params, parametrization);
+
+      if (Number.isInteger(xEnd)) {
+        y_c = [cumsum, cumsum];
+        for (let x = Math.ceil(xStart); x < xEnd; x++) {
+          prob = this.pmfSingleValue(x, params, parametrization);
+          if (!isNaN(prob)) cumsum += prob;
+          y_c.push(cumsum, cumsum);
+        }
+        prob = this.pmfSingleValue(xEnd, params, parametrization);
+        if (!isNaN(prob)) cumsum += prob;
+        y_c.push(cumsum);        
+      }
+      else {
+        y_c = [cumsum, cumsum];
+        for (let x = Math.ceil(xStart); x <= xEnd; x++) {
+          prob = this.pmfSingleValue(x, params, parametrization);
+          if (!isNaN(prob)) cumsum += prob;
+          y_c.push(cumsum, cumsum);
+        }
+      }    
     }
 
-    
-    let yCDF = [];
-    for (let x = xStart; x < xEnd; x++) {
-      prob = this.pmfSingleValue(x, params, parametrization);
-      if (!isNaN(prob)) cumsum += prob;
-      yCDF.push(cumsum, cumsum);
-    }
-
-    return yCDF;
+    return y_c;
   }
 
   ppfSingleValue(p, params, parametrization = this.parametrization) {
@@ -3100,10 +3137,16 @@ class WeibullDistribution extends ContinuousUnivariateDistribution {
 
   pdfSingleValue(x, params) {
     if (x < 0) return NaN;
-    if (x === 0) return 0.0;
     if (x === Infinity) return 0.0;
 
     let [alpha, sigma] = params.slice(0, 2);
+
+    if (x === 0) {
+      if (alpha > 1.0) return 0.0;
+      if (alpha < 1.0) return Infinity;
+      if (alpha == 1.0) return Math.exp(-x / sigma) / sigma;
+    }
+
 
     let logp = -Math.pow(x / sigma, alpha) + (alpha - 1) * Math.log(x) 
                 + Math.log(alpha) - alpha * Math.log(sigma);
@@ -4540,12 +4583,13 @@ function paramsFromBoxes(boxes) {
 """,
     "setYRanges": """
 function setYRanges(p_p, p_c, source_p) {
-    p_c.y_range.start = -0.04;
-    p_c.y_range.end = 1.04;        
+    p_c.y_range.start = 0.0;
+    p_c.y_range.end = 1.0;        
 
     let pdfMax = source_p.data['y_p'];
-    p_p.y_range.start = -pdfMax * 0.04;
+    p_p.y_range.start = 0.0;
     p_p.y_range.end = 1.04 * pdfMax;
+
 }
 
 """,
@@ -4642,14 +4686,30 @@ function updateContinuousPDFandCDF(source_p, source_c, xRange, sliders) {
     "updateDiscretePMFandCDF": """
 function updateDiscretePMFandCDF(source_p, source_c, xRange, sliders) {
   
-  let xRangeMin = Math.floor(xRange.start);
-  let xRangeMax = Math.ceil(xRange.end);
+  let xRangeMin = Math.ceil(xRange.start);
+  let xRangeMax = Math.floor(xRange.end);
 
   
   let x_p = arange(xRangeMin, xRangeMax + 1);
 
   
-  let x_c = [xRangeMin - 1, ...x_p.flatMap(x => [x, x]), xRangeMax + 1];
+  let x_c;
+  if (Number.isInteger(xRange.start)) {
+    if (Number.isInteger(xRange.end)) {
+      x_c = x_p.flatMap(x => [x, x]);
+    }
+    else {
+      x_c = [...x_p.flatMap(x => [x, x]), xRange.end];
+    }
+  }
+  else {
+    if (Number.isInteger(xRange.end)) {
+      x_c = [xRange.start, ...x_p.flatMap(x => [x, x])];
+    }
+    else {
+      x_c = [xRange.start, ...x_p.flatMap(x => [x, x]), xRange.end];
+    }    
+  }
 
   
   source_p.data['x'] = x_p;
