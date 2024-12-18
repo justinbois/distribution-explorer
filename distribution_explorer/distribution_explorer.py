@@ -1,6 +1,7 @@
 import warnings
 
 import numpy as np
+import scipy.special
 import scipy.stats as st
 
 import bokeh.events
@@ -21,37 +22,52 @@ discrete_dists = [
     "negative_binomial_mu_phi",
     "negative_binomial_r_b",
     "poisson",
+    "telegraph_rna",
 ]
 
 continuous_dists = [
+    # Commented out dists are allowed alternative names
     "beta",
     "beta_phi_kappa",
     "cauchy",
     "exponential",
     "gamma",
-    "halfcauchy",  # Same as halfcauchy
+    # "halfcauchy",  # Same as half_cauchy
     "half_cauchy",
-    "halfnormal",
-    "half_normal",  # Same as halfnormal
-    "halfstudent_t",
-    "half_student_t",  # Same as halfstudent_t
+    # "halfnormal",   # Same as half_normal
+    "half_normal",
+    # "halfstudent_t",    # Same as half_student_t
+    "half_student_t",
+    "invgamma",                # Same as inverse_gamma
     "inverse_gamma",
-    "invgamma",  # Same as gamma
+    "invgamma",  # Same as inverse_gamma
+    "inverse_gaussian",
+    # "invgauss",    # Same as inverse_gaussian
+    # "invgaussian", # Same a inverse_gaussian
     "lognormal",
     "log_normal",  # Same as lognormal
     "normal",
     "gaussian",  # Same as normal
     "pareto",
     "student_t",
-    "vonmises", # Same as von_mises
+    "vonmises",  # Same as von_mises
     "von_mises",
     "uniform",
+    # "wald",  # Same as inverse_gaussian
     "weibull",
 ]
 
 
 def _to_camel_case(input_str):
-    return "".join(word.capitalize() for word in input_str.split("_"))
+    result = "".join(word.capitalize() for word in input_str.split("_"))
+
+    # If we have acronyms in the name, re-capitalize
+    if 'Dna' in result:
+        result = result.replace('Dna', 'DNA')
+    if 'Rna' in result:
+        result = result.replace('Rna', 'RNA')
+
+    return result
 
 
 def _categorical_pmf(x, theta_1, theta_2, theta_3):
@@ -84,6 +100,24 @@ def _categorical_cdf(x, theta_1, theta_2, theta_3):
     return np.array([_categorical_cdf_indiv(x_val, thetas) for x_val in x])
 
 
+def _discrete_cdf_indiv(x, pmf, x_min, params):
+    cumsum = 0.0
+    summand = 0.0
+    for n in range(int(x_min), int(x) + 1):
+        summand = pmf(n, *params)
+        if not np.isnan(summand):
+            cumsum += summand
+
+    return cumsum
+
+
+def _discrete_cdf(x, pmf, x_min, params):
+    if np.isscalar(x):
+        return _discrete_cdf_indiv(x, pmf, x_min, params)
+    else:
+        return np.array([_discrete_cdf_indiv(x_val, pmf, x_min, params) for x_val in x])
+
+
 def _halfstudent_t_pdf(x, nu, mu, sigma):
     out = np.empty_like(x)
     out[x >= mu] = 2 * st.t.pdf(x[x >= mu], nu, mu, sigma)
@@ -96,6 +130,33 @@ def _halfstudent_t_cdf(x, nu, mu, sigma):
     out[x >= mu] = 2 * st.t.cdf(x[x >= mu], nu, mu, sigma) - 1
     out[x < mu] = 0.0
     return out
+
+
+def _log_pochhammer(a, n):
+    return scipy.special.gammaln(a + n) - scipy.special.gammaln(a)
+
+
+def _telegraph_rna_pmf_indiv(kon, koff, beta, n):
+    log_res = n * np.log(beta)
+    log_res -= scipy.special.loggamma(n + 1)
+
+    # Pochhammers
+    log_res += _log_pochhammer(kon, n) - _log_pochhammer(kon + koff, n)
+
+    # Hypergeometric
+    log_res += np.log(scipy.special.hyp1f1(kon + n, kon + koff + n, -beta))
+
+    return np.exp(log_res)
+
+def _telegraph_rna_pmf(x, kon, koff, beta):
+    if np.isscalar(x):
+        return _telegraph_rna_pmf_indiv(kon, koff, beta, x)
+    else:
+        return np.array([_telegraph_rna_pmf_indiv(kon, koff, beta, n) for n in x])
+
+
+def _telegraph_rna_cdf(x, kon, koff, beta):
+    _discrete_cdf(x, _telegraph_rna_pmf, 0, (kon, koff, beta))
 
 
 def _funs(dist):
@@ -137,6 +198,8 @@ def _funs(dist):
         )
     elif dist == "poisson":
         return st.poisson.pmf, st.poisson.cdf
+    elif dist == "telegraph_rna":
+        return _telegraph_rna_pmf, _telegraph_rna_cdf
     elif dist == "beta":
         return st.beta.pdf, st.beta.cdf
     elif dist == "beta_phi_kappa":
@@ -166,6 +229,11 @@ def _funs(dist):
         return (
             lambda x, alpha, beta: st.invgamma.pdf(x, alpha, loc=0, scale=beta),
             lambda x, alpha, beta: st.invgamma.cdf(x, alpha, loc=0, scale=beta),
+        )
+    elif dist == "inverse_gaussian":
+        return (
+            lambda x, mu, lam: st.invgauss.pdf(x, mu / lam, loc=0, scale=lam),
+            lambda x, mu, lam: st.invgauss.cdf(x, mu / lam, loc=0, scale=lam),
         )
     elif dist == "log_normal":
         return (
@@ -464,6 +532,43 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         x_max = 40
         x_axis_label = "n"
         title = "Poisson"
+    elif dist == "telegraph_rna":
+        params = [
+            dict(
+                name="kon",
+                start=0.01,
+                end=10,
+                value=1,
+                step=0.01,
+                is_int=False,
+                min_value=0,
+                max_value="Infinity",
+            ),
+            dict(
+                name="koff",
+                start=0.01,
+                end=10,
+                value=1,
+                step=0.01,
+                is_int=False,
+                min_value=0,
+                max_value="Infinity",
+            ),
+            dict(
+                name="beta",
+                start=0.01,
+                end=10,
+                value=1,
+                step=0.01,
+                is_int=False,
+                min_value=0,
+                max_value="Infinity",
+            ),
+        ]
+        x_min = 0
+        x_max = 50
+        x_axis_label = "n"
+        title = "Telegraph RNA"
     elif dist == "beta":
         params = [
             dict(
@@ -707,6 +812,33 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         x_max = 20
         x_axis_label = "y"
         title = "Inverse Gamma"
+    elif dist == "inverse_gaussian" or dist == "invgaussian" or dist == "invgauss" or dist == "wald":
+        params = [
+            dict(
+                name="µ",
+                start=0.1,
+                end=20,
+                value=10,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+            dict(
+                name="λ",
+                start=0.1,
+                end=20,
+                value=10,
+                step=0.01,
+                is_int=False,
+                min_value="0",
+                max_value="Infinity",
+            ),
+        ]
+        x_min = 0
+        x_max = 50
+        x_axis_label = "y"
+        title = "Inverse Gaussian"
     elif dist == "lognormal" or dist == "log_normal":
         params = [
             dict(
@@ -856,8 +988,8 @@ def _load_params(dist, _params, _x_min, _x_max, _x_axis_label, _title):
         params = [
             dict(
                 name="μ",
-                start=-3.1416, # Need to be just a few decimal places for
-                end=3.1416,    # slider start/end adjust windows
+                start=-3.1416,  # Need to be just a few decimal places for
+                end=3.1416,  # slider start/end adjust windows
                 value=0,
                 step=0.01,
                 is_int=False,
@@ -968,27 +1100,45 @@ def _compute_quantile_setter_params(dist, params, ptiles=None):
     if dist == "negative_binomial":
         p = [0.5] if ptiles is None else list(ptiles)
         x = list(
-            st.nbinom.ppf(p, params[0]["value"], params[1]["value"] / (1 + params[1]["value"]))
+            st.nbinom.ppf(
+                p, params[0]["value"], params[1]["value"] / (1 + params[1]["value"])
+            )
         )
     if dist == "negative_binomial_mu_phi":
         p = [0.5] if ptiles is None else list(ptiles)
         x = list(
-            st.nbinom.ppf(p, params[0]["value"], params[1]["value"] / (params[0]["value"] + params[1]["value"]))
+            st.nbinom.ppf(
+                p,
+                params[0]["value"],
+                params[1]["value"] / (params[0]["value"] + params[1]["value"]),
+            )
         )
     if dist == "negative_binomial_r_b":
         p = [0.5] if ptiles is None else list(ptiles)
-        x = list(
-            st.nbinom.ppf(p, params[0]["value"], 1 / (1 + params[1]["value"]))
-        )
+        x = list(st.nbinom.ppf(p, params[0]["value"], 1 / (1 + params[1]["value"])))
     if dist == "poisson":
         p = [0.5] if ptiles is None else list(ptiles)
         x = list(st.poisson.ppf(p, params[0]["value"]))
+    if dist == "telegraph_rna":
+        p = [0.5] if ptiles is None else list(ptiles)
+        x = 0
+        cumsum = 0
+        while cumsum < p[0]:
+            cumsum += _telegraph_rna_pmf(x, params[0]["value"], params[1]["value"], params[2]["value"])
+            x += 1
+        x = [x]
     if dist == "beta":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(st.beta.ppf(p, params[0]["value"], params[1]["value"]))
     if dist == "beta_phi_kappa":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
-        x = list(st.beta.ppf(p, params[0]["value"] * params[1]["value"], (1 - params[0]["value"]) * params[1]["value"]))
+        x = list(
+            st.beta.ppf(
+                p,
+                params[0]["value"] * params[1]["value"],
+                (1 - params[0]["value"]) * params[1]["value"],
+            )
+        )
     if dist == "cauchy":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(st.cauchy.ppf(p, params[0]["value"], params[1]["value"]))
@@ -1018,6 +1168,11 @@ def _compute_quantile_setter_params(dist, params, ptiles=None):
         x = list(
             st.invgamma.ppf(p, params[0]["value"], loc=0, scale=params[1]["value"])
         )
+    if dist == "inverse_gaussian":
+        p = [0.025, 0.975] if ptiles is None else list(ptiles)
+        x = list(
+            st.invgauss.ppf(p, params[0]["value"] / params[1]['value'], loc=0, scale=params[1]["value"]),
+        )
     if dist == "log_normal":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(
@@ -1044,7 +1199,7 @@ def _compute_quantile_setter_params(dist, params, ptiles=None):
         ]
     if dist == "von_mises":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
-        x = list(st.vonmises_line.ppf(p, params[1]["value"], loc=params[0]['value']))
+        x = list(st.vonmises_line.ppf(p, params[1]["value"], loc=params[0]["value"]))
     if dist == "weibull":
         p = [0.025, 0.975] if ptiles is None else list(ptiles)
         x = list(
@@ -1113,15 +1268,17 @@ def explore(
 
     if dist == "gaussian":
         dist = "normal"
-    if dist == "invgamma":
+    if dist == "invgamma" or dist == 'inverse-gamma':
         dist = "inverse_gamma"
-    if dist == "lognormal":
+    if dist == "wald" or dist == "invgaussian" or dist == "invgauss" or dist == 'inverse-gaussian':
+        dist = "inverse_gaussian"
+    if dist == "lognormal" or dist == 'log-normal':
         dist = "log_normal"
-    if dist == "halfnormal":
+    if dist == "halfnormal" or dist == "half-normal":
         dist = "half_normal"
-    if dist == "halfcauchy":
+    if dist == "halfcauchy" or dist == 'half-cauchy':
         dist = "half_cauchy"
-    if dist == "halfstudent_t":
+    if dist == "halfstudent_t" or dist == 'half-student-t' or dist == 'half_student_t' or dist == 'halfstudentt':
         dist = "half_student_t"
     if dist == "vonmises":
         dist = "von_mises"
@@ -1167,14 +1324,12 @@ def explore(
         p_y_axis_label = "PDF"
 
     # Lock axes for Bernoulli and Categorical
-    # DEBUG!!
-    # For now, to avoid problem with improper redrawing after panning,
-    # disable panning and wheel zoom
+    # Panning and zooming seem to work with Bokeh 3.6.0 and above.
     if "tools" not in kwargs:
         if dist in ["bernoulli", "categorical"]:
             kwargs["tools"] = "save"
         else:
-            kwargs['tools'] = 'reset,save'
+            kwargs["tools"] = "pan,box_zoom,wheel_zoom,save,reset"
 
     p_p = bokeh.plotting.figure(
         x_axis_label=x_axis_label,
@@ -1267,13 +1422,23 @@ def explore(
     source_c = bokeh.models.ColumnDataSource(data={"x": x_c, "y_c": y_c})
 
     # Plot PMF/PDF and CDF
-    p_c.line("x", "y_c", source=source_c, line_width=2, level='overlay')
+    p_c.line("x", "y_c", source=source_c, line_width=2, level="glyph")
     if discrete:
-        p_p.scatter("x", "y_p", source=source_p, size=5, marker="circle", level='overlay')
+        p_p.scatter(
+            "x", "y_p", source=source_p, size=5, marker="circle", level="glyph"
+        )
         if p_y_axis_type != "log":
-            p_p.segment(x0="x", x1="x", y0=0, y1="y_p", source=source_p, line_width=2, level='overlay')
+            p_p.segment(
+                x0="x",
+                x1="x",
+                y0=0,
+                y1="y_p",
+                source=source_p,
+                line_width=2,
+                level="glyph",
+            )
     else:
-        p_p.line("x", "y_p", source=source_p, line_width=2, level='overlay')
+        p_p.line("x", "y_p", source=source_p, line_width=2, level="glyph")
 
     # In previous versions, range padding was set to 0 for convenience.
     # Now, ranges are explicitly set.

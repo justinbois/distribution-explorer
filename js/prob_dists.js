@@ -1,3 +1,5 @@
+const { stdin } = require("process");
+
 class UnivariateDistribution {
   constructor(parametrization) {
     // Name of distribution
@@ -1390,6 +1392,106 @@ class PoissonDistribution extends DiscreteUnivariateDistribution {
 }
 
 
+class TelegraphRNADistribution extends DiscreteUnivariateDistribution {
+  constructor() {
+    super();
+
+    // Name of distribution
+    this.name = 'Telegraph RNA';
+
+    // Name of independent variable (used in quantile setter)
+    this.varName = 'n';
+
+    // Maximum allowed min and max of the distribution, regardless of params
+    this.hardMin = 0;
+    this.hardMax = Infinity;
+
+    // Parameter names, in order of params
+    this.paramNames = ['kon', 'koff', 'beta'];
+
+    // Parameter minima
+    this.paramMin = [0, 0, 0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity, Infinity];
+
+    // Parameters that are fixed in quantile setting
+    this.fixedParams = ['kon', 'koff'];
+
+    // Trigger computing active and fixed indices for quantile setting
+    super.generateActiveFixedInds()
+  }
+
+  xMin(params) {
+    return 0;   
+  }
+
+  xMax(params) {
+    return Infinity;
+  }
+
+  pmfSingleValue(n, params) {
+    let kon = params[0];
+    let koff = params[1];
+    let beta = params[2];
+    let result;
+
+    // If beta is zero or kon is zero, result is zero unless n = 0
+    if (beta == 0 || koff == 0) {
+      result = n == 0 ? 1.0 : 0.0;
+    }
+    else if (n == 0) {
+      result = hyp1f1(kon, kon + koff, -beta); 
+    }
+    else {
+      // Prefactor
+      let logpmf = n * Math.log(beta) - lnfactorial(n);
+
+      // Two Pochhammers
+      logpmf += lngamma(kon + n) - lngamma(kon);
+      logpmf -= lngamma(kon + koff + n) - lngamma(kon + koff);
+
+      // 1F1 part
+      logpmf += Math.log(hyp1f1(kon + n, kon + koff + n, -beta));
+
+      result = Math.exp(logpmf);
+    }
+
+    return result;
+  }
+
+  defaultXRange(params, parametrization = this.parametrization) {
+    return [0.0, super.ppfSingleValue(0.999, params)];
+  }
+
+  quantileSet(x, p) {
+    let x1 = x[0];
+    let p1 = p[0];
+
+    if (!Number.isInteger(x1)) {
+      throw new Error(this.varName + ' must be integer.')
+    }
+    if (x1 < 0) {
+      throw new Error('Must have ' + this.varName + ' > 0.')
+    }
+
+    // Know it exactly for p1 = 1 and x1 = 0, beta has to be zero.
+    if (x1 === 0 && p1 === 1) return [[0.0], true];
+
+    // Root finding function for quantile using transformation to maintain positivity
+    const rootFun = (xi) => {
+      if (xi === 1) return p1;
+      return p1 - this.cdfSingleValue(x1, [xi / (1 - xi)]);
+    }
+
+    let xiOpt = brentSolve(rootFun, 0.0, 1.0);
+    let optimSuccess = xiOpt != null;
+    
+    return [[xiOpt / (1 - xiOpt)], optimSuccess];
+  }
+}
+
+
 class BetaDistribution extends ContinuousUnivariateDistribution {
   constructor(parametrization = 'alpha-beta') {
     super(parametrization);
@@ -2330,6 +2432,145 @@ class InverseGammaDistribution extends ContinuousUnivariateDistribution {
 
 }
 
+class InverseGaussianDistribution extends ContinuousUnivariateDistribution {
+  // Only add parametrization argument to constructor() and super() in the next two lines
+  // if you need to define it (i.e., more than one possibility)
+  constructor() {
+    super();
+
+    // Name of distribution
+    this.name = 'InverseGaussian';
+
+    // Name of independent variable (used in quantile setter)
+    this.varName = 'y';
+
+    // Maximum allowed min and max of the distribution, regardless of params
+    this.hardMin = 0.0;
+    this.hardMax = Infinity;
+
+    // Parameter names, in order of params
+    this.paramNames = ['µ', 'λ'];
+
+    // Location parameter, if any
+    this.locationParam = undefined;
+
+    // Parameter minima
+    this.paramMin = [0.0, 0.0];
+
+    // Parameter maxima
+    this.paramMax = [Infinity, Infinity];
+
+    // Parameters that are fixed in quantile setting
+    this.fixedParams = [];
+
+    // Trigger computing active and fixed indices for quantile setting
+    super.generateActiveFixedInds();
+
+    // Trigger computing location parameter index
+    super.generateLocationParamIndex();
+  }
+
+  xMin(params, parametrization = this.parametrization) {
+    return 0.0;    
+  }
+
+  xMax(params, parametrization = this.parametrization) {
+    return Infinity;
+  }
+
+  pdfSingleValue(x, params, parametrization = this.parametrization) {
+    if (x < 0) return NaN;
+    if (x === 0 || x === Infinity) return 0.0;  // Technically not zero at x = 0, undefined
+
+    let [mu, lambda] = params.slice(0, 2);
+
+    let lnProb;
+    lnProb = -Math.log(2.0 * Math.PI) / 2.0 + (Math.log(lambda) - 3.0 * Math.log(x)) / 2.0
+             - lambda * Math.pow(x - mu, 2) / (2.0 * Math.pow(mu, 2) * x);
+
+    return Math.exp(lnProb);
+  }
+
+  cdfSingleValue(x, params, parametrization = this.parametrization) {
+    if (x <= 0) return 0.0;
+    if (x === Infinity) return 1.0;
+
+    let [mu, lambda] = params.slice(0, 2);
+
+    let term1 = lnStdNormCdf(Math.sqrt(lambda / x) * (x / mu - 1.0));
+    let term2 = 2.0 * lambda / mu + lnStdNormCdf(-Math.sqrt(lambda / x) * (x / mu + 1.0));
+
+    return Math.exp(logSumExp(term1, term2));
+  }
+
+  ppfSingleValue(p, params, parametrization = this.parametrization) {
+    // Follows algorithm laid out in Giner and Smyth, The R Journal Vol. 8/1, Aug. 2016
+    if (p == 0) return 0.0;
+    if (p == 1) return Infinity;
+
+    let [mu, lambda] = params.slice(0, 2);
+
+    // Mode of the inverse Gaussian
+    let xMode = mu * (Math.sqrt(1.0 + 2.25 * Math.pow(mu, 2) / Math.pow(lambda, 2)) - 1.5 * mu / lambda);
+
+    // Start at mode, and then Newton step with convex function.
+    let f;
+    let df;
+    if (p < this.cdfSingleValue(xMode, params, parametrization)) {
+      f = (x, params, p) => this.cdfSingleValue(x, params, parametrization) - p;
+      df = (x, params, p) => this.pdfSingleValue(x, params, parametrization);
+    }
+    else {
+      f = (x, params, p) => p - this.cdfSingleValue(x, params, parametrization);
+      df = (x, params, p) => -this.pdfSingleValue(x, params, parametrization);
+    }
+
+    return newtonSolve(xMode, f, df, [params, p]);
+  }
+
+  defaultXRange(params, parametrization = this.parametrization) {
+    // Heavy tail, so only go to 99th percentile
+    let [x1, x2] = this.ppf([0.01, 0.99], params);
+
+    // If lower bound is within 10% of the range of bounds to zero, make it zero
+    if (x1 < (x2 - x1) / 10.0) x1 = 0.0;
+
+    return [x1, x2];    
+  }
+
+  quantileSet(x, p) {
+    let [x1, x2] = x.slice(0, 2);
+    let [p1, p2] = p.slice(0, 2);
+
+    // Rescale according to larger percentile
+    let x1Rescaled = x1 / x2;
+    let x2Rescaled = 1.0;
+
+    // Root finding function using log parameters to enforce positivity
+    const quantileRootFun = (params, x1, p1, x2, p2) => {
+      let mu = Math.exp(params[0]);
+      let lambda = Math.exp(params[1]);
+
+      let r1 = this.cdfSingleValue(x1, [mu, lambda]) - p1;
+      let r2 = this.cdfSingleValue(x2, [mu, lambda]) - p2;
+
+      return [r1, r2];
+    };
+
+    let args = [x1Rescaled, p1, x2Rescaled, p2];
+
+    let guess = [2, 2];
+
+    let [logParams, optimSuccess] = findRootTrustRegion(quantileRootFun, guess, args=args);
+
+    // Convert from log params
+    let paramsOpt = [Math.exp(logParams[0]), Math.exp(logParams[1])];
+
+    // Return result with proper scaling
+    return [[x2 * paramsOpt[0], x2 * paramsOpt[1]], optimSuccess];
+  }
+}
+
 
 class LogNormalDistribution extends ContinuousUnivariateDistribution {
   constructor() {
@@ -2405,7 +2646,7 @@ class LogNormalDistribution extends ContinuousUnivariateDistribution {
 
   defaultXRange(params) {
     // Due to very heavy right tail, only go to 99th percentile
-    let [x1, x2] = this.ppf([0.001, 0.99], params);
+    let [x1, x2] = this.ppf([0.01, 0.99], params);
 
     // If lower bound is within 10% of the range of bounds to zero, make it zero
     if (x1 < (x2 - x1) / 10.0) x1 = 0.0;
@@ -3229,6 +3470,7 @@ module.exports = {
   HypergeometricDistribution,
   NegativeBinomialDistribution,
   PoissonDistribution,
+  TelegraphRNADistribution,
   BetaDistribution,
   CauchyDistribution,
   ExponentialDistribution,
@@ -3237,6 +3479,7 @@ module.exports = {
   HalfNormalDistribution,
   HalfStudentTDistribution,
   InverseGammaDistribution,
+  InverseGaussianDistribution,
   LogNormalDistribution,
   NormalDistribution,
   ParetoDistribution,

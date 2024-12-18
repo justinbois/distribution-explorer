@@ -55,12 +55,12 @@ function setYRanges(p_p, p_c, source_p) {
 function checkQuantileInput(x, p, xMin, xMax, varName, quantileSetterDiv) {
   for (let i = 0; i < x.length; i++) {
     if (p[i] <= 0 || p[i] >= 1) {
-      quantileSetterDiv.text = '<p style="color:tomato;">Must have 0 < quantile < 1.</p\>';
+      quantileSetterDiv.text = '<p style="color:tomato;">Must have 0 < quantile < 1.</p>';
       return false; 
     }
 
     if (x[i] < xMin || x[i] > xMax) {
-      let qStr = '<p style="color:tomato;">Must have ' + xMin.toString() + ' ≤ yy ≤ ' + xMax.toString() + '.</p\>';
+      let qStr = '<p style="color:tomato;">Must have ' + xMin.toString() + ' ≤ yy ≤ ' + xMax.toString() + '.</p>';
       quantileSetterDiv.text = qStr.replace(/yy/g, varName);
       return false;
     }
@@ -69,34 +69,34 @@ function checkQuantileInput(x, p, xMin, xMax, varName, quantileSetterDiv) {
 
   if (p.length === 2) {
     if (p[1] <= 0 || p[1] >= 1) {
-        quantileSetterDiv.text = '<p style="color:tomato;">Must have 0 < quantile < 1.</p\>';
+        quantileSetterDiv.text = '<p style="color:tomato;">Must have 0 < quantile < 1.</p>';
         return false;
     }
 
     if (p[0] >= p[1]) {
-        quantileSetterDiv.text = '<p style="color:tomato;">Lower quantile must be less than upper quantile.</p\>';
+        quantileSetterDiv.text = '<p style="color:tomato;">Lower quantile must be less than upper quantile.</p>';
         return false;
     }
 
     if (x[0] >= x[1]) {
-        quantileSetterDiv.text = '<p style="color:tomato;">Lower yy must be less than upper yy.</p\>'.replace(/yy/g, varName);
+        quantileSetterDiv.text = '<p style="color:tomato;">Lower yy must be less than upper yy.</p>'.replace(/yy/g, varName);
         return false;        
     }
   }
 
   if (p.length === 3) {
     if (p[2] <= 0 || p[2] >= 1 || p[1] <= 0 || p[1] >= 1) {
-        quantileSetterDiv.text = '<p style="color:tomato;">Must have 0 < quantile < 1.</p\>';
+        quantileSetterDiv.text = '<p style="color:tomato;">Must have 0 < quantile < 1.</p>';
         return false;
     }
 
     if (p[0] >= p[1] || p[1] >= p[2]) {
-        quantileSetterDiv.text = '<p style="color:tomato;">Quantiles must be ordered lower, middle, upper.</p\>';
+        quantileSetterDiv.text = '<p style="color:tomato;">Quantiles must be ordered lower, middle, upper.</p>';
         return false;
     }
 
     if (x[0] >= x[1] || x[1] >= x[2]) {
-        quantileSetterDiv.text = '<p style="color:tomato;">yy values must be ordered, lower, middle, upper.</p\>'.replace(/yy/g, varName);
+        quantileSetterDiv.text = '<p style="color:tomato;">yy values must be ordered, lower, middle, upper.</p>'.replace(/yy/g, varName);
         return false;
     }
   }

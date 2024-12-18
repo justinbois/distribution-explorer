@@ -96,6 +96,16 @@ function log1p(x) {
 }
 
 
+function logSumExp(x1, x2) {
+  if (x1 > x2) {
+    return x1 + log1p(Math.exp(x2 - x1));
+  }
+  else {
+    return x2 + log1p(Math.exp(x1 - x2));
+  }
+}
+
+
 function erf(x) {
   // Error function using polynomial approximation (accurate to about 10^-7)
   var a = [1.00002368,
@@ -119,6 +129,41 @@ function erf(x) {
 
   if (x < 0) return -result;
   return result;
+}
+
+/**
+ * Complementary error function.
+ * 
+ * Uses approximation from Dia, https://doi.org/10.2139%2Fssrn.4487559.
+ * 
+ * Relative accuracy is about 1e-16.
+ * 
+ */
+function erfc(x) {
+  let y2 = Math.pow(x, 2);
+  let y = x < 0 ? -x : x;
+  const term1 = 0.56418958354775629 / (y + 2.06955023132914151);
+  
+  const term2 = (y**2 + 2.71078540045147805 * y + 5.80755613130301624) / 
+                (y**2 + 3.47954057099518960 * y + 12.06166887286239555);
+
+  const term3 = (y**2 + 3.47469513777439592 * y + 12.07402036406381411) / 
+                (y**2 + 3.72068443960225092 * y + 8.44319781003968454);
+
+  const term4 = (y**2 + 4.00561509202259545 * y + 9.30596659485887898) / 
+                (y**2 + 3.90225704029924078 * y + 6.36161630953880464);
+
+  const term5 = (y**2 + 5.16722705817812584 * y + 9.12661617673673262) / 
+                (y**2 + 4.03296893109262491 * y + 5.13578530585681539);
+
+  const term6 = (y**2 + 5.95908795446633271 * y + 9.19435612886969243) / 
+                (y**2 + 4.11240942957450885 * y + 4.48640329523408675);
+
+  const expTerm = Math.exp(-Math.pow(x,2));
+
+  let res = term1 * term2 * term3 * term4 * term5 * term6 * expTerm;
+
+  return x < 0 ? 2.0 - res : res;
 }
 
 
@@ -202,6 +247,48 @@ function erfinv(x) {
 
 }
 
+/**
+ * Logarithm of CDF of a normal distribution
+ * 
+ * Uses algorithm PPND7 from Wichura, 1987: https://doi.org/10.2307/2347330
+ * 
+ */
+function lnStdNormCdf(x) {
+  // y is x / sqrt(2)
+  let y = x / 1.4142135623730950488016887;
+
+  let res;
+  // Easy to compute when y is more then zero (CDF > 0.5)
+  if (y > 0.0) {
+    res = log1p(-0.5 * erfc(y));
+  } 
+  else if (y > -20.0) {
+    // log(erfc(-y) - log(2))
+    res = Math.log(erfc(-y)) - 0.6931471805599453;
+  }
+  else {
+    // Approximate based on W. J. Cody, Math. Comp., 1969.
+    const y2 = Math.pow(y, 2);
+    const y4 = Math.pow(y, 4);
+    const y6 = Math.pow(y, 6);
+    const y8 = Math.pow(y, 8);
+    const y10 = Math.pow(y, 10);
+    const temp_p = 0.000658749161529837803157 + 0.0160837851487422766278 / y2
+                 + 0.125781726111229246204 / y4 + 0.360344899949804439429 / y6
+                 + 0.305326634961232344035 / y8 + 0.0163153871373020978498 / y10;
+    const temp_q = -0.00233520497626869185443 - 0.0605183413124413191178 / y2
+                   - 0.527905102951428412248 / y4 - 1.87295284992346047209 / y6
+                   - 2.56852019228982242072 / y8 - 1.0 / y10;
+    res = -0.6931471805599453 + Math.log(0.5641895835477563 + (temp_p / temp_q) / y2) - Math.log(-y) - y2;
+  }
+
+  if (isNaN(res)) {
+    return -Infinity;
+  }
+  else {
+    return res;
+  }
+}
 
 
 function lnchoice(n, k) {
@@ -398,6 +485,87 @@ function gammaincL(x, s, regularized) {
 
   return pws * ft / s;
 }
+
+
+function hyp1f1(a, b, x) {
+  let i, j, la, n, nl;
+  let a0 = a, a1 = a, x0 = x, y0, y1, hg1, hg2, r1, r2, rg, xg, sum1, sum2;
+  let hg = 0.0;
+
+  // DLMF 13.2.39
+  if (x < 0.0) {
+    a = b - a;
+    a0 = a;
+    x = Math.abs(x);
+  }
+  nl = 0;
+  la = 0;
+  if (a >= 2.0) {
+    // preparing terms for DLMF 13.3.1
+    nl = 1;
+    la = Math.floor(a);
+    a -= la + 1;
+  }
+  y0 = 0.0;
+  y1 = 0.0;
+  for (n = 0; n < (nl + 1); n++) {
+    if (a0 >= 2.0) { a += 1.0; }
+    if ((x <= 30.0 + Math.abs(b)) || (a < 0.0)) {
+      hg = 1.0;
+      rg = 1.0;
+      for (j = 1; j < 501; j++) {
+        rg *= (a + j - 1.0) / (j * (b + j - 1.0)) * x;
+        hg += rg;
+        if (rg / hg < 1e-15) {
+          // DLMF 13.2.39 (cf. above)
+          if (x0 < 0.0) { hg *= Math.exp(x0); }
+          break;
+        }
+      }
+    } else {
+      // DLMF 13.7.2 & 13.2.4, SUM2 corresponds to first sum
+      const cta = lngamma(a);
+      const ctb = lngamma(b);
+      xg = b - a;
+      const ctba = lngamma(xg);
+      sum1 = 1.0;
+      sum2 = 1.0;
+      r1 = 1.0;
+      r2 = 1.0;
+      for (i = 1; i < 9; i++) {
+        r1 = -r1 * (a + i - 1.0) * (a - b + i) / (x * i);
+        r2 = -r2 * (b - a + i - 1.0) * (a - i) / (x * i);
+        sum1 += r1;
+        sum2 += r2;
+      }
+      if (x0 >= 0.0) {
+        hg1 = Math.exp(ctb - ctba) * Math.pow(x, -a) * Math.cos(Math.PI * a) * sum1;
+        hg2 = Math.exp(ctb - cta + x) * Math.pow(x, a - b) * sum2;
+      } else {
+        // DLMF 13.2.39 (cf. above)
+        hg1 = Math.exp(ctb - ctba + x0) * Math.pow(x, -a) * Math.cos(Math.PI * a) * sum1;
+        hg2 = Math.exp(ctb - cta) * Math.pow(x, a - b) * sum2;
+      }
+      hg = hg1 + hg2;
+    }
+    if (n === 0) { y0 = hg; }
+    if (n === 1) { y1 = hg; }
+  }
+  if (a0 >= 2.0) {
+    // DLMF 13.3.1
+    for (i = 1; i < la; i++) {
+      hg = ((2.0 * a - b + x) * y1 + (b - a) * y0) / a;
+      y0 = y1;
+      y1 = hg;
+      a += 1.0;
+    }
+  }
+  a = a1;
+  x = x0;
+  return hg;
+}
+
+
 
 function chbevl(x, A) {
   // Evaluate a Chebyshev polynomial at x with coefficents A.
@@ -888,4 +1056,4 @@ function lnfactorial(n) {
 }
 
 
-module.exports = { isclose, isone, iszero, linspace, logspace, meshgrid, arange, logit, log1p, erf, erfinv, lnchoice, lnbeta, betacf, regularizedIncompleteBeta, incompleteBeta, lngamma, gammaincU, gammaincL, clenshawCurtisWeights, clenshawCurtisIntegrate, chebPoints, lnfactorial, chbevl, besseli0, cosm1 };
+module.exports = { isclose, isone, iszero, linspace, logspace, meshgrid, arange, logit, log1p, erf, erfinv, lnchoice, lnbeta, betacf, regularizedIncompleteBeta, incompleteBeta, lngamma, gammaincU, gammaincL, clenshawCurtisWeights, clenshawCurtisIntegrate, chebPoints, lnfactorial, hyp1f1, chbevl, besseli0, cosm1 };

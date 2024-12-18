@@ -1368,6 +1368,106 @@ class PoissonDistribution extends DiscreteUnivariateDistribution {
 
 }
 """,
+    "TelegraphRNADistribution": """
+class TelegraphRNADistribution extends DiscreteUnivariateDistribution {
+  constructor() {
+    super();
+
+    
+    this.name = 'Telegraph RNA';
+
+    
+    this.varName = 'n';
+
+    
+    this.hardMin = 0;
+    this.hardMax = Infinity;
+
+    
+    this.paramNames = ['kon', 'koff', 'beta'];
+
+    
+    this.paramMin = [0, 0, 0];
+
+    
+    this.paramMax = [Infinity, Infinity, Infinity];
+
+    
+    this.fixedParams = ['kon', 'koff'];
+
+    
+    super.generateActiveFixedInds()
+  }
+
+  xMin(params) {
+    return 0;   
+  }
+
+  xMax(params) {
+    return Infinity;
+  }
+
+  pmfSingleValue(n, params) {
+    let kon = params[0];
+    let koff = params[1];
+    let beta = params[2];
+    let result;
+
+    
+    if (beta == 0 || koff == 0) {
+      result = n == 0 ? 1.0 : 0.0;
+    }
+    else if (n == 0) {
+      result = hyp1f1(kon, kon + koff, -beta); 
+    }
+    else {
+      
+      let logpmf = n * Math.log(beta) - lnfactorial(n);
+
+      
+      logpmf += lngamma(kon + n) - lngamma(kon);
+      logpmf -= lngamma(kon + koff + n) - lngamma(kon + koff);
+
+      
+      logpmf += Math.log(hyp1f1(kon + n, kon + koff + n, -beta));
+
+      result = Math.exp(logpmf);
+    }
+
+    return result;
+  }
+
+  defaultXRange(params, parametrization = this.parametrization) {
+    return [0.0, super.ppfSingleValue(0.999, params)];
+  }
+
+  quantileSet(x, p) {
+    let x1 = x[0];
+    let p1 = p[0];
+
+    if (!Number.isInteger(x1)) {
+      throw new Error(this.varName + ' must be integer.')
+    }
+    if (x1 < 0) {
+      throw new Error('Must have ' + this.varName + ' > 0.')
+    }
+
+    
+    if (x1 === 0 && p1 === 1) return [[0.0], true];
+
+    
+    const rootFun = (xi) => {
+      if (xi === 1) return p1;
+      return p1 - this.cdfSingleValue(x1, [xi / (1 - xi)]);
+    }
+
+    let xiOpt = brentSolve(rootFun, 0.0, 1.0);
+    let optimSuccess = xiOpt != null;
+    
+    return [[xiOpt / (1 - xiOpt)], optimSuccess];
+  }
+}
+""",
     "BetaDistribution": """
 class BetaDistribution extends ContinuousUnivariateDistribution {
   constructor(parametrization = 'alpha-beta') {
@@ -2315,6 +2415,146 @@ class InverseGammaDistribution extends ContinuousUnivariateDistribution {
 
 }
 """,
+    "InverseGaussianDistribution": """
+class InverseGaussianDistribution extends ContinuousUnivariateDistribution {
+  
+  
+  constructor() {
+    super();
+
+    
+    this.name = 'InverseGaussian';
+
+    
+    this.varName = 'y';
+
+    
+    this.hardMin = 0.0;
+    this.hardMax = Infinity;
+
+    
+    this.paramNames = ['µ', 'λ'];
+
+    
+    this.locationParam = undefined;
+
+    
+    this.paramMin = [0.0, 0.0];
+
+    
+    this.paramMax = [Infinity, Infinity];
+
+    
+    this.fixedParams = [];
+
+    
+    super.generateActiveFixedInds();
+
+    
+    super.generateLocationParamIndex();
+  }
+
+  xMin(params, parametrization = this.parametrization) {
+    return 0.0;    
+  }
+
+  xMax(params, parametrization = this.parametrization) {
+    return Infinity;
+  }
+
+  pdfSingleValue(x, params, parametrization = this.parametrization) {
+    if (x < 0) return NaN;
+    if (x === 0 || x === Infinity) return 0.0;  
+
+    let [mu, lambda] = params.slice(0, 2);
+
+    let lnProb;
+    lnProb = -Math.log(2.0 * Math.PI) / 2.0 + (Math.log(lambda) - 3.0 * Math.log(x)) / 2.0
+             - lambda * Math.pow(x - mu, 2) / (2.0 * Math.pow(mu, 2) * x);
+
+    return Math.exp(lnProb);
+  }
+
+  cdfSingleValue(x, params, parametrization = this.parametrization) {
+    if (x <= 0) return 0.0;
+    if (x === Infinity) return 1.0;
+
+    let [mu, lambda] = params.slice(0, 2);
+
+    let term1 = lnStdNormCdf(Math.sqrt(lambda / x) * (x / mu - 1.0));
+    let term2 = 2.0 * lambda / mu + lnStdNormCdf(-Math.sqrt(lambda / x) * (x / mu + 1.0));
+
+    return Math.exp(logSumExp(term1, term2));
+  }
+
+  ppfSingleValue(p, params, parametrization = this.parametrization) {
+    
+    if (p == 0) return 0.0;
+    if (p == 1) return Infinity;
+
+    let [mu, lambda] = params.slice(0, 2);
+
+    
+    let xMode = mu * (Math.sqrt(1.0 + 2.25 * Math.pow(mu, 2) / Math.pow(lambda, 2)) - 1.5 * mu / lambda);
+
+    
+    let f;
+    let df;
+    if (p < this.cdfSingleValue(xMode, params, parametrization)) {
+      f = (x, params, p) => this.cdfSingleValue(x, params, parametrization) - p;
+      df = (x, params, p) => this.pdfSingleValue(x, params, parametrization);
+    }
+    else {
+      f = (x, params, p) => p - this.cdfSingleValue(x, params, parametrization);
+      df = (x, params, p) => -this.pdfSingleValue(x, params, parametrization);
+    }
+
+    return newtonSolve(xMode, f, df, [params, p]);
+  }
+
+  defaultXRange(params, parametrization = this.parametrization) {
+    
+    let [x1, x2] = this.ppf([0.01, 0.99], params);
+
+    
+    if (x1 < (x2 - x1) / 10.0) x1 = 0.0;
+
+    return [x1, x2];    
+  }
+
+  quantileSet(x, p) {
+    let [x1, x2] = x.slice(0, 2);
+    let [p1, p2] = p.slice(0, 2);
+
+    
+    let x1Rescaled = x1 / x2;
+    let x2Rescaled = 1.0;
+
+    
+    const quantileRootFun = (params, x1, p1, x2, p2) => {
+      let mu = Math.exp(params[0]);
+      let lambda = Math.exp(params[1]);
+
+      let r1 = this.cdfSingleValue(x1, [mu, lambda]) - p1;
+      let r2 = this.cdfSingleValue(x2, [mu, lambda]) - p2;
+
+      return [r1, r2];
+    };
+
+    let args = [x1Rescaled, p1, x2Rescaled, p2];
+
+    let guess = [2, 2];
+
+    let [logParams, optimSuccess] = findRootTrustRegion(quantileRootFun, guess, args=args);
+
+    
+    let paramsOpt = [Math.exp(logParams[0]), Math.exp(logParams[1])];
+
+    
+    return [[x2 * paramsOpt[0], x2 * paramsOpt[1]], optimSuccess];
+  }
+}
+""",
     "LogNormalDistribution": """
 class LogNormalDistribution extends ContinuousUnivariateDistribution {
   constructor() {
@@ -2390,7 +2630,7 @@ class LogNormalDistribution extends ContinuousUnivariateDistribution {
 
   defaultXRange(params) {
     
-    let [x1, x2] = this.ppf([0.001, 0.99], params);
+    let [x1, x2] = this.ppf([0.01, 0.99], params);
 
     
     if (x1 < (x2 - x1) / 10.0) x1 = 0.0;
@@ -3304,6 +3544,17 @@ function log1p(x) {
 }
 
 """,
+    "logSumExp": """
+function logSumExp(x1, x2) {
+  if (x1 > x2) {
+    return x1 + log1p(Math.exp(x2 - x1));
+  }
+  else {
+    return x2 + log1p(Math.exp(x1 - x2));
+  }
+}
+
+""",
     "erf": """
 function erf(x) {
   
@@ -3328,6 +3579,35 @@ function erf(x) {
 
   if (x < 0) return -result;
   return result;
+}
+
+""",
+    "erfc": """
+function erfc(x) {
+  let y2 = Math.pow(x, 2);
+  let y = x < 0 ? -x : x;
+  const term1 = 0.56418958354775629 / (y + 2.06955023132914151);
+  
+  const term2 = (y**2 + 2.71078540045147805 * y + 5.80755613130301624) / 
+                (y**2 + 3.47954057099518960 * y + 12.06166887286239555);
+
+  const term3 = (y**2 + 3.47469513777439592 * y + 12.07402036406381411) / 
+                (y**2 + 3.72068443960225092 * y + 8.44319781003968454);
+
+  const term4 = (y**2 + 4.00561509202259545 * y + 9.30596659485887898) / 
+                (y**2 + 3.90225704029924078 * y + 6.36161630953880464);
+
+  const term5 = (y**2 + 5.16722705817812584 * y + 9.12661617673673262) / 
+                (y**2 + 4.03296893109262491 * y + 5.13578530585681539);
+
+  const term6 = (y**2 + 5.95908795446633271 * y + 9.19435612886969243) / 
+                (y**2 + 4.11240942957450885 * y + 4.48640329523408675);
+
+  const expTerm = Math.exp(-Math.pow(x,2));
+
+  let res = term1 * term2 * term3 * term4 * term5 * term6 * expTerm;
+
+  return x < 0 ? 2.0 - res : res;
 }
 
 """,
@@ -3402,6 +3682,45 @@ function erfinv(x) {
   
   return 0.7071067811865475 * res;
 
+}
+
+""",
+    "lnStdNormCdf": """
+function lnStdNormCdf(x) {
+  
+  let y = x / 1.4142135623730950488016887;
+
+  let res;
+  
+  if (y > 0.0) {
+    res = log1p(-0.5 * erfc(y));
+  } 
+  else if (y > -20.0) {
+    
+    res = Math.log(erfc(-y)) - 0.6931471805599453;
+  }
+  else {
+    
+    const y2 = Math.pow(y, 2);
+    const y4 = Math.pow(y, 4);
+    const y6 = Math.pow(y, 6);
+    const y8 = Math.pow(y, 8);
+    const y10 = Math.pow(y, 10);
+    const temp_p = 0.000658749161529837803157 + 0.0160837851487422766278 / y2
+                 + 0.125781726111229246204 / y4 + 0.360344899949804439429 / y6
+                 + 0.305326634961232344035 / y8 + 0.0163153871373020978498 / y10;
+    const temp_q = -0.00233520497626869185443 - 0.0605183413124413191178 / y2
+                   - 0.527905102951428412248 / y4 - 1.87295284992346047209 / y6
+                   - 2.56852019228982242072 / y8 - 1.0 / y10;
+    res = -0.6931471805599453 + Math.log(0.5641895835477563 + (temp_p / temp_q) / y2) - Math.log(-y) - y2;
+  }
+
+  if (isNaN(res)) {
+    return -Infinity;
+  }
+  else {
+    return res;
+  }
 }
 
 """,
@@ -3600,6 +3919,86 @@ function gammaincL(x, s, regularized) {
   } while (c / pws > EPSILON);
 
   return pws * ft / s;
+}
+
+""",
+    "hyp1f1": """
+function hyp1f1(a, b, x) {
+  let i, j, la, n, nl;
+  let a0 = a, a1 = a, x0 = x, y0, y1, hg1, hg2, r1, r2, rg, xg, sum1, sum2;
+  let hg = 0.0;
+
+  
+  if (x < 0.0) {
+    a = b - a;
+    a0 = a;
+    x = Math.abs(x);
+  }
+  nl = 0;
+  la = 0;
+  if (a >= 2.0) {
+    
+    nl = 1;
+    la = Math.floor(a);
+    a -= la + 1;
+  }
+  y0 = 0.0;
+  y1 = 0.0;
+  for (n = 0; n < (nl + 1); n++) {
+    if (a0 >= 2.0) { a += 1.0; }
+    if ((x <= 30.0 + Math.abs(b)) || (a < 0.0)) {
+      hg = 1.0;
+      rg = 1.0;
+      for (j = 1; j < 501; j++) {
+        rg *= (a + j - 1.0) / (j * (b + j - 1.0)) * x;
+        hg += rg;
+        if (rg / hg < 1e-15) {
+          
+          if (x0 < 0.0) { hg *= Math.exp(x0); }
+          break;
+        }
+      }
+    } else {
+      
+      const cta = lngamma(a);
+      const ctb = lngamma(b);
+      xg = b - a;
+      const ctba = lngamma(xg);
+      sum1 = 1.0;
+      sum2 = 1.0;
+      r1 = 1.0;
+      r2 = 1.0;
+      for (i = 1; i < 9; i++) {
+        r1 = -r1 * (a + i - 1.0) * (a - b + i) / (x * i);
+        r2 = -r2 * (b - a + i - 1.0) * (a - i) / (x * i);
+        sum1 += r1;
+        sum2 += r2;
+      }
+      if (x0 >= 0.0) {
+        hg1 = Math.exp(ctb - ctba) * Math.pow(x, -a) * Math.cos(Math.PI * a) * sum1;
+        hg2 = Math.exp(ctb - cta + x) * Math.pow(x, a - b) * sum2;
+      } else {
+        
+        hg1 = Math.exp(ctb - ctba + x0) * Math.pow(x, -a) * Math.cos(Math.PI * a) * sum1;
+        hg2 = Math.exp(ctb - cta) * Math.pow(x, a - b) * sum2;
+      }
+      hg = hg1 + hg2;
+    }
+    if (n === 0) { y0 = hg; }
+    if (n === 1) { y1 = hg; }
+  }
+  if (a0 >= 2.0) {
+    
+    for (i = 1; i < la; i++) {
+      hg = ((2.0 * a - b + x) * y1 + (b - a) * y0) / a;
+      y0 = y1;
+      y1 = hg;
+      a += 1.0;
+    }
+  }
+  a = a1;
+  x = x0;
+  return hg;
 }
 
 """,
@@ -4597,12 +4996,12 @@ function setYRanges(p_p, p_c, source_p) {
 function checkQuantileInput(x, p, xMin, xMax, varName, quantileSetterDiv) {
   for (let i = 0; i < x.length; i++) {
     if (p[i] <= 0 || p[i] >= 1) {
-      quantileSetterDiv.text = '<p style="color:tomato;">Must have 0 < quantile < 1.</p\>';
+      quantileSetterDiv.text = '<p style="color:tomato;">Must have 0 < quantile < 1.</p>';
       return false; 
     }
 
     if (x[i] < xMin || x[i] > xMax) {
-      let qStr = '<p style="color:tomato;">Must have ' + xMin.toString() + ' ≤ yy ≤ ' + xMax.toString() + '.</p\>';
+      let qStr = '<p style="color:tomato;">Must have ' + xMin.toString() + ' ≤ yy ≤ ' + xMax.toString() + '.</p>';
       quantileSetterDiv.text = qStr.replace(/yy/g, varName);
       return false;
     }
@@ -4611,34 +5010,34 @@ function checkQuantileInput(x, p, xMin, xMax, varName, quantileSetterDiv) {
 
   if (p.length === 2) {
     if (p[1] <= 0 || p[1] >= 1) {
-        quantileSetterDiv.text = '<p style="color:tomato;">Must have 0 < quantile < 1.</p\>';
+        quantileSetterDiv.text = '<p style="color:tomato;">Must have 0 < quantile < 1.</p>';
         return false;
     }
 
     if (p[0] >= p[1]) {
-        quantileSetterDiv.text = '<p style="color:tomato;">Lower quantile must be less than upper quantile.</p\>';
+        quantileSetterDiv.text = '<p style="color:tomato;">Lower quantile must be less than upper quantile.</p>';
         return false;
     }
 
     if (x[0] >= x[1]) {
-        quantileSetterDiv.text = '<p style="color:tomato;">Lower yy must be less than upper yy.</p\>'.replace(/yy/g, varName);
+        quantileSetterDiv.text = '<p style="color:tomato;">Lower yy must be less than upper yy.</p>'.replace(/yy/g, varName);
         return false;        
     }
   }
 
   if (p.length === 3) {
     if (p[2] <= 0 || p[2] >= 1 || p[1] <= 0 || p[1] >= 1) {
-        quantileSetterDiv.text = '<p style="color:tomato;">Must have 0 < quantile < 1.</p\>';
+        quantileSetterDiv.text = '<p style="color:tomato;">Must have 0 < quantile < 1.</p>';
         return false;
     }
 
     if (p[0] >= p[1] || p[1] >= p[2]) {
-        quantileSetterDiv.text = '<p style="color:tomato;">Quantiles must be ordered lower, middle, upper.</p\>';
+        quantileSetterDiv.text = '<p style="color:tomato;">Quantiles must be ordered lower, middle, upper.</p>';
         return false;
     }
 
     if (x[0] >= x[1] || x[1] >= x[2]) {
-        quantileSetterDiv.text = '<p style="color:tomato;">yy values must be ordered, lower, middle, upper.</p\>'.replace(/yy/g, varName);
+        quantileSetterDiv.text = '<p style="color:tomato;">yy values must be ordered, lower, middle, upper.</p>'.replace(/yy/g, varName);
         return false;
     }
   }
@@ -5329,6 +5728,7 @@ _dependencies = {
     "NegativeBinomialAlphaPDistribution": [],
     "NegativeBinomialRBDistribution": ['UnivariateDistribution', 'DiscreteUnivariateDistribution', 'NegativeBinomialDistribution', 'BinomialDistribution', 'PoissonDistribution', 'regularizedIncompleteBeta', 'lngamma', 'lnfactorial', 'findRootTrustRegion', 'bisectionSolve', 'brentSolve', 'lnchoice', 'log1p', 'betacf', 'isclose', 'gammaincU', 'transpose', 'mvMult', 'mmMult', 'vectorAdd', 'norm', 'deepCopy', 'computeRho', 'checkTol', 'doglegStep', 'jacCentralDiff', 'gammaincL', 'dot', 'zeros', 'svMult', 'quadForm', 'solvePosDef', 'modifiedCholesky', 'modifiedCholeskySolve', 'arange', 'lowerTriSolve', 'upperTriSolve'],
     "PoissonDistribution": ['UnivariateDistribution', 'DiscreteUnivariateDistribution', 'gammaincU', 'lnfactorial', 'brentSolve', 'lngamma', 'gammaincL', 'isclose'],
+    "TelegraphRNADistribution": ['UnivariateDistribution', 'DiscreteUnivariateDistribution', 'lngamma', 'hyp1f1', 'lnfactorial', 'brentSolve', 'isclose'],
     "BetaDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution', 'isone', 'iszero', 'lnbeta', 'regularizedIncompleteBeta', 'findRootTrustRegion', 'brentSolve', 'isclose', 'lngamma', 'log1p', 'betacf', 'transpose', 'mvMult', 'mmMult', 'vectorAdd', 'norm', 'deepCopy', 'computeRho', 'checkTol', 'doglegStep', 'jacCentralDiff', 'dot', 'zeros', 'svMult', 'quadForm', 'solvePosDef', 'modifiedCholesky', 'modifiedCholeskySolve', 'arange', 'lowerTriSolve', 'upperTriSolve'],
     "BetaPhiKappaDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution', 'BetaDistribution', 'isone', 'iszero', 'lnbeta', 'regularizedIncompleteBeta', 'findRootTrustRegion', 'brentSolve', 'isclose', 'lngamma', 'log1p', 'betacf', 'transpose', 'mvMult', 'mmMult', 'vectorAdd', 'norm', 'deepCopy', 'computeRho', 'checkTol', 'doglegStep', 'jacCentralDiff', 'dot', 'zeros', 'svMult', 'quadForm', 'solvePosDef', 'modifiedCholesky', 'modifiedCholeskySolve', 'arange', 'lowerTriSolve', 'upperTriSolve'],
     "CauchyDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution'],
@@ -5338,6 +5738,7 @@ _dependencies = {
     "HalfNormalDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution', 'erf', 'erfinv'],
     "HalfStudentTDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution', 'CauchyDistribution', 'HalfCauchyDistribution', 'HalfNormalDistribution', 'NormalDistribution', 'StudentTDistribution', 'log1p', 'regularizedIncompleteBeta', 'lngamma', 'norm', 'findRootTrustRegion', 'erf', 'erfinv', 'betacf', 'dot', 'transpose', 'mvMult', 'mmMult', 'vectorAdd', 'deepCopy', 'computeRho', 'checkTol', 'doglegStep', 'jacCentralDiff', 'zeros', 'svMult', 'quadForm', 'solvePosDef', 'modifiedCholesky', 'modifiedCholeskySolve', 'arange', 'lowerTriSolve', 'upperTriSolve'],
     "InverseGammaDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution', 'GammaDistribution', 'lngamma', 'gammaincU', 'gammaincL', 'norm', 'findRootTrustRegion', 'secantSolve', 'brentSolve', 'dot', 'transpose', 'mvMult', 'mmMult', 'vectorAdd', 'deepCopy', 'computeRho', 'checkTol', 'doglegStep', 'jacCentralDiff', 'zeros', 'svMult', 'quadForm', 'solvePosDef', 'modifiedCholesky', 'modifiedCholeskySolve', 'arange', 'lowerTriSolve', 'upperTriSolve'],
+    "InverseGaussianDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution', 'logSumExp', 'lnStdNormCdf', 'findRootTrustRegion', 'newtonSolve', 'log1p', 'erfc', 'transpose', 'mvMult', 'mmMult', 'vectorAdd', 'norm', 'deepCopy', 'computeRho', 'checkTol', 'doglegStep', 'jacCentralDiff', 'dot', 'zeros', 'svMult', 'quadForm', 'solvePosDef', 'modifiedCholesky', 'modifiedCholeskySolve', 'arange', 'lowerTriSolve', 'upperTriSolve'],
     "LogNormalDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution', 'erf', 'erfinv'],
     "NormalDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution', 'erf', 'erfinv'],
     "ParetoDistribution": ['UnivariateDistribution', 'ContinuousUnivariateDistribution'],
@@ -5354,8 +5755,11 @@ _dependencies = {
     "meshgrid": [],
     "logit": [],
     "log1p": [],
+    "logSumExp": ['log1p'],
     "erf": [],
+    "erfc": [],
     "erfinv": [],
+    "lnStdNormCdf": ['log1p', 'erfc'],
     "lnchoice": ['lnfactorial'],
     "lnbeta": ['lngamma'],
     "betacf": [],
@@ -5364,6 +5768,7 @@ _dependencies = {
     "lngamma": [],
     "gammaincU": ['lngamma', 'gammaincL', 'gammaincU'],
     "gammaincL": ['lngamma', 'gammaincU', 'gammaincL'],
+    "hyp1f1": ['lngamma'],
     "chbevl": [],
     "polevl": [],
     "besseli0": ['chbevl'],
